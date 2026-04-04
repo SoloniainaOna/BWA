@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Video Water Trail + Click Ripple</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: black;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" src="2KH.mov" autoplay loop muted playsinline style="display:none;"></video>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.js"></script>
+  <script>
+    // Scene & camera
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+
+    // Plane & Shader
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    const MAX_POINTS = 60;
+    const MAX_RIPPLES = 10;
+
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        uTexture: { value: null },
+        uTrail: { value: Array(MAX_POINTS).fill(new THREE.Vector3(-10, -10, 0)) },
+        uTrailCount: { value: 0 },
+        uTime: { value: 0.0 },
+        uRipples: { value: Array(MAX_RIPPLES).fill(new THREE.Vector3(-10, -10, 0)) },
+        uRippleCount: { value: 0 }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main(){
+          vUv = uv;
+          gl_Position = vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D uTexture;
+        uniform vec3 uTrail[${MAX_POINTS}];
+        uniform int uTrailCount;
+        uniform float uTime;
+        uniform vec3 uRipples[${MAX_RIPPLES}]; // xy = position, z = time
+        uniform int uRippleCount;
+        varying vec2 vUv;
+
+        void main(){
+          vec2 uv = vUv;
+          vec2 offset = vec2(0.0);
+
+          float radius = 0.07;
+          float invR2x2 = 1.0 / (2.0 * radius * radius);
+
+          // FLOWING TRAIL — continuous segments with Gaussian falloff
+          for(int i = 0; i < ${MAX_POINTS} - 1; i++){
+            if(i >= uTrailCount - 1) break;
+
+            vec2 a = uTrail[i].xy;
+            vec2 b = uTrail[i + 1].xy;
+            float sa = uTrail[i].z;
+            float sb = uTrail[i + 1].z;
+
+            // closest point on segment [a,b]
+            vec2 ab = b - a;
+            float len2 = dot(ab, ab);
+            float t = len2 < 0.000001 ? 0.0 : clamp(dot(uv - a, ab) / len2, 0.0, 1.0);
+            vec2 closest = a + t * ab;
+            float dist = distance(uv, closest);
+            float strength = mix(sa, sb, t);
+
+            // wide smooth Gaussian falloff — blends nicely between segments
+            float falloff = exp(-dist * dist * invR2x2);
+
+            // gentle fluid wave
+            float wave = 0.6 + 0.4 * sin(5.0 * dist - uTime * 2.5);
+
+            vec2 dir = uv - closest;
+            float dirLen = length(dir);
+            dir = dirLen > 0.0001 ? dir / dirLen : vec2(0.0);
+
+            offset += dir * falloff * strength * wave * 0.008;
+          }
+
+          // single-point fallback (first touch, no segment yet)
+          if(uTrailCount == 1){
+            vec2 pt = uTrail[0].xy;
+            float s  = uTrail[0].z;
+            float d  = distance(uv, pt);
+            float fo = exp(-d * d * invR2x2);
+            float w  = 0.6 + 0.4 * sin(5.0 * d - uTime * 2.5);
+            vec2 dir = normalize(uv - pt + 0.0001);
+            offset += dir * fo * s * w * 0.008;
+          }
+
+          // WAKE RIPPLES — multiple expanding rings per trail point (boat wake)
+          for(int i = 0; i < ${MAX_POINTS}; i++){
+            if(i >= uTrailCount) break;
+            vec2 wp = uTrail[i].xy;
+            float ws = uTrail[i].z;
+
+            float wd = distance(uv, wp);
+            float age = 1.0 - ws;
+
+            // expanding wavefront
+            float wSpeed = 0.18;
+            float wFront = age * wSpeed;
+
+            // only behind the front
+            float wMask = smoothstep(wFront + 0.003, wFront - 0.012, wd);
+
+            // concentric rings traveling outward (mini version of click ripple)
+            float wk = 55.0;
+            float wWave = sin(wk * wd - wk * wSpeed * age);
+
+            // spatial decay
+            float wDecay = 1.0 / (1.0 + 12.0 * wd);
+
+            // fade with age
+            float wAmp = ws * ws;
+
+            vec2 wDir = normalize(uv - wp + 0.0001);
+            offset += wDir * wWave * wMask * wDecay * wAmp * 0.005;
+          }
+
+          // CLICK RIPPLES — multiple simultaneous expanding water waves
+          for(int i = 0; i < ${MAX_RIPPLES}; i++){
+            if(i >= uRippleCount) break;
+            vec2 rPos = uRipples[i].xy;
+            float rT = uRipples[i].z;
+
+            float dist = distance(uv, rPos);
+
+            // wavefront expanding outward at constant speed
+            float speed = 0.35;
+            float front = speed * rT;
+
+            // only show waves behind the expanding front
+            float mask = smoothstep(front + 0.005, front - 0.04, dist);
+
+            // concentric rings traveling outward (phase velocity = speed)
+            float k = 45.0;
+            float wave = sin(k * dist - k * speed * rT);
+
+            // amplitude falls with distance (energy spreading in 2D)
+            float decay = 1.0 / (1.0 + 8.0 * dist);
+
+            // gradual temporal fade
+            float fade = exp(-rT * 0.6);
+
+            vec2 dir = normalize(uv - rPos + 0.0001);
+            offset += dir * wave * mask * decay * fade * 0.014;
+          }
+
+          vec3 color = texture2D(uTexture, uv + offset).rgb;
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+      transparent: true
+    });
+
+    const plane = new THREE.Mesh(geometry, material);
+    scene.add(plane);
+
+    // Video texture
+    const video = document.getElementById('video');
+    video.play().catch(e => console.log(e));
+    const videoTexture = new THREE.VideoTexture(video);
+    videoTexture.minFilter = THREE.LinearFilter;
+    videoTexture.magFilter = THREE.LinearFilter;
+    videoTexture.format = THREE.RGBFormat;
+    videoTexture.generateMipmaps = false;
+    material.uniforms.uTexture.value = videoTexture;
+
+    // Resize
+    function resize() {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // TRAIL LOGIC
+    let dragging = false;
+    let trail = [];
+
+    function addTrailPoint(x, y) {
+      const mx = x / window.innerWidth;
+      const my = 1.0 - y / window.innerHeight;
+      // minimum distance between points — avoids clustering on slow drags
+      if (trail.length > 0) {
+        const last = trail[trail.length - 1];
+        const dx = mx - last.x;
+        const dy = my - last.y;
+        if (dx * dx + dy * dy < 0.0003) return;
+      }
+      trail.push(new THREE.Vector3(mx, my, 1.0));
+      if (trail.length > MAX_POINTS) trail.shift();
+    }
+
+    // RIPPLES — multiple simultaneous
+    let ripples = []; // { x, y, time }
+
+    function createRipple(x, y){
+      const mx = x / window.innerWidth;
+      const my = 1.0 - y / window.innerHeight;
+      ripples.push({ x: mx, y: my, time: 0.001 });
+      if (ripples.length > MAX_RIPPLES) ripples.shift();
+    }
+
+    // Mouse
+    window.addEventListener('mousedown', e => {
+      dragging = true;
+      addTrailPoint(e.clientX, e.clientY);
+      createRipple(e.clientX, e.clientY);
+    });
+    window.addEventListener('mouseup', () => dragging = false);
+    window.addEventListener('mousemove', e => {
+      if(dragging) addTrailPoint(e.clientX, e.clientY);
+    });
+
+    // Touch — handle ALL fingers, not just the first
+    window.addEventListener('touchstart', e => {
+      dragging = true;
+      for (let i = 0; i < e.changedTouches.length; i++){
+        const t = e.changedTouches[i];
+        addTrailPoint(t.clientX, t.clientY);
+        createRipple(t.clientX, t.clientY);
+      }
+    });
+    window.addEventListener('touchend', e => {
+      if(e.touches.length === 0) dragging = false;
+    });
+    window.addEventListener('touchmove', e => {
+      if(dragging){
+        for (let i = 0; i < e.changedTouches.length; i++){
+          const t = e.changedTouches[i];
+          addTrailPoint(t.clientX, t.clientY);
+        }
+      }
+    });
+
+    // Animate
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if(video.readyState >= video.HAVE_CURRENT_DATA){
+        videoTexture.needsUpdate = true;
+      }
+
+      // Fade trail
+      for(let i = 0; i < trail.length; i++) trail[i].z *= 0.97;
+      trail = trail.filter(p => p.z > 0.02);
+      const padded = trail.concat(Array(MAX_POINTS - trail.length).fill(new THREE.Vector3(-10,-10,0)));
+      material.uniforms.uTrail.value = padded;
+      material.uniforms.uTrailCount.value = trail.length;
+      material.uniforms.uTime.value += 0.02;
+
+      // Ripple animation — advance all active ripples, remove expired
+      for(let i = 0; i < ripples.length; i++) ripples[i].time += 0.02;
+      ripples = ripples.filter(r => r.time < 5.0);
+      const rPadded = ripples.map(r => new THREE.Vector3(r.x, r.y, r.time))
+        .concat(Array(MAX_RIPPLES - ripples.length).fill(new THREE.Vector3(-10, -10, 0)));
+      material.uniforms.uRipples.value = rPadded;
+      material.uniforms.uRippleCount.value = ripples.length;
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Fullscreen fix
+    video.addEventListener('canplay', () => video.play().catch(e => console.log(e)));
+    document.addEventListener('fullscreenchange', () => {
+      if(document.fullscreenElement){
+        video.play().catch(e => console.log('Video play error in fullscreen', e));
+      }
+    });
+  </script>
+</body>
+</html>

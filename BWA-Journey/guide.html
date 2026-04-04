@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BWA — Staff Guide</title>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="theme-color" content="#000000">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --black: #000;
+      --white: #fff;
+      --dim:  rgba(255,255,255,0.12);
+      --dim2: rgba(255,255,255,0.06);
+      --dim3: rgba(255,255,255,0.03);
+      --accent:     #c8a96e;
+      --accent-dim: rgba(200,169,110,0.15);
+      --surface: rgba(255,255,255,0.035);
+    }
+
+    *, *::before, *::after {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.032;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .bg-glow {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse 60% 40% at 20% 20%, rgba(200,169,110,0.05) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── LAYOUT ──────────────────────────────────── */
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 0 32px 80px;
+    }
+
+    /* ─── HEADER ──────────────────────────────────── */
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 36px 0 0;
+      border-bottom: 1px solid var(--dim2);
+      padding-bottom: 28px;
+      margin-bottom: 48px;
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+    }
+    .logo span { color: var(--accent); }
+
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    .back-link:hover, .back-link:active { color: var(--accent); }
+
+    /* ─── HERO ────────────────────────────────────── */
+    .guide-hero {
+      margin-bottom: 56px;
+    }
+
+    .guide-eyebrow {
+      font-size: 10px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+
+    .guide-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(44px, 8vw, 72px);
+      line-height: 1.02;
+      letter-spacing: -0.01em;
+      margin-bottom: 20px;
+    }
+    .guide-title em {
+      font-style: italic;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .guide-sub {
+      font-size: 13px;
+      line-height: 1.75;
+      color: rgba(255,255,255,0.4);
+      max-width: 520px;
+    }
+
+    /* ─── SECTION ─────────────────────────────────── */
+    .section {
+      margin-bottom: 52px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--dim2);
+    }
+
+    .section-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 32px;
+      font-weight: 300;
+      color: var(--accent);
+      opacity: 0.5;
+      line-height: 1;
+    }
+
+    .section-title {
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* ─── STEP CARD ───────────────────────────────── */
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--dim2);
+      border-radius: 4px;
+      padding: 24px 28px;
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .step-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 2px; height: 100%;
+      background: var(--accent);
+      opacity: 0.5;
+    }
+
+    .step-card-label {
+      font-size: 9px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.8;
+      margin-bottom: 8px;
+    }
+
+    .step-card-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+
+    .step-card-desc {
+      font-size: 12px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* ─── CHECKLIST ───────────────────────────────── */
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .checklist li {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.55);
+      padding: 10px 16px;
+      border: 1px solid var(--dim2);
+      border-radius: 3px;
+    }
+
+    .check-box {
+      width: 18px; height: 18px;
+      border: 1px solid var(--dim);
+      border-radius: 3px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ─── FLOW TABLE ──────────────────────────────── */
+    .flow-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .flow-table th {
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      text-align: left;
+      padding: 0 0 12px;
+      border-bottom: 1px solid var(--dim2);
+    }
+
+    .flow-table td {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      padding: 14px 0;
+      border-bottom: 1px solid var(--dim2);
+      vertical-align: top;
+    }
+
+    .flow-table td:first-child {
+      width: 60px;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px;
+      font-weight: 300;
+      color: var(--accent);
+      opacity: 0.6;
+      padding-right: 20px;
+    }
+
+    .flow-table td strong {
+      display: block;
+      color: rgba(255,255,255,0.75);
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+
+    /* ─── ALERT BLOCK ─────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 16px;
+      padding: 18px 20px;
+      background: rgba(200,169,110,0.06);
+      border: 1px solid rgba(200,169,110,0.2);
+      border-radius: 4px;
+      margin-bottom: 14px;
+    }
+
+    .alert-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .alert-text {
+      font-size: 12px;
+      line-height: 1.65;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .alert-text strong {
+      display: block;
+      color: var(--accent);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    /* ─── DIVIDER ─────────────────────────────────── */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--dim) 30%, transparent 100%);
+      margin-bottom: 52px;
+    }
+
+    /* ─── FOOTER ──────────────────────────────────── */
+    .guide-footer {
+      padding-top: 32px;
+      border-top: 1px solid var(--dim2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-note {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.15);
+    }
+
+    /* ─── RESET BUTTON ────────────────────────────── */
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 24px;
+      border: 1px solid var(--dim);
+      border-radius: 100px;
+      background: transparent;
+      color: rgba(255,255,255,0.4);
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      transition: border-color 0.3s, color 0.3s;
+      touch-action: manipulation;
+    }
+    .btn-action:hover, .btn-action:active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ─── CONFIG BLOCK ────────────────────────────── */
+    .config-block {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--dim2);
+      border-radius: 4px;
+      padding: 20px 24px;
+      margin-bottom: 14px;
+    }
+
+    .config-label {
+      font-size: 9px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.7;
+      margin-bottom: 8px;
+    }
+
+    .config-val {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.5;
+    }
+
+    .config-note {
+      font-size: 11px;
+      color: rgba(255,255,255,0.28);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    /* ─── RESPONSIVE ──────────────────────────────── */
+    @media (max-width: 600px) {
+      .page { padding: 0 20px 60px; }
+      .site-header { padding-top: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<div class="page">
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="logo">BW<span>A</span> — Staff Guide</div>
+    <a class="back-link" href="index.html">← User view</a>
+  </header>
+
+  <!-- Hero -->
+  <div class="guide-hero">
+    <div class="guide-eyebrow">Internal reference</div>
+    <div class="guide-title">Managing<br><em>the journey</em></div>
+    <div class="guide-sub">
+      This guide covers everything needed to run the BWA Journey experience —
+      from setup before visitors arrive to resetting between sessions.
+      Keep this page open on a staff tablet throughout the event.
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+
+  <!-- ── SECTION 1: OVERVIEW ───────────────────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">Experience Overview</div>
+    </div>
+
+    <p style="font-size:13px;line-height:1.75;color:rgba(255,255,255,0.45);margin-bottom:24px;">
+      Visitors follow a four-step guided journey, all managed from a single tablet.
+      The flow is linear — each step must be completed before advancing to the next.
+      No staff intervention is required during a normal visit.
+    </p>
+
+    <table class="flow-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Step</th>
+          <th>Duration</th>
+          <th>Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>
+            <strong>Explore the Space</strong>
+            Walk the room, discover works, experiment with interactive elements.
+          </td>
+          <td style="width:90px;white-space:nowrap;">15 – 20 min</td>
+          <td style="width:100px;">Entire room</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>
+            <strong>Digital Experiences</strong>
+            Three interactive works on the tablet: ripple, filters, puzzle.
+          </td>
+          <td style="white-space:nowrap;">20 – 30 min</td>
+          <td>On tablet</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>
+            <strong>Virtual Reality</strong>
+            VR headset experience. Staff-assisted if needed.
+          </td>
+          <td style="white-space:nowrap;">10 – 15 min</td>
+          <td>VR station</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>
+            <strong>Companion App</strong>
+            Open the third-party app to complete the journey.
+          </td>
+          <td style="white-space:nowrap;">5 – 10 min</td>
+          <td>On tablet</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- ── SECTION 2: BEFORE VISITORS ARRIVE ─────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">Before Visitors Arrive</div>
+    </div>
+
+    <p style="font-size:13px;line-height:1.75;color:rgba(255,255,255,0.45);margin-bottom:20px;">
+      Run through this checklist before each session opens.
+    </p>
+
+    <ul class="checklist">
+      <li>
+        <div class="check-box"></div>
+        <span>All visitor tablets are charged to at least 80% and open on <strong style="color:rgba(255,255,255,0.7)">index.html</strong> — the Welcome screen.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>VR headsets are charged, sanitised, and placed at the VR station.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>The BWA Experiences app (tablet experiments) is accessible — test the link in Step 2.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>The companion app URL (Step 4) is correctly configured in <strong style="color:rgba(255,255,255,0.7)">index.html</strong>.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>Room lighting and all interactive physical installations are active and functional.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>Wi-Fi is stable. Test loading the experiences app and companion app from a visitor tablet.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>All tablets are set to auto-brightness off, screen timeout to <strong style="color:rgba(255,255,255,0.7)">Never</strong>.</span>
+      </li>
+    </ul>
+  </div>
+
+
+  <!-- ── SECTION 3: STEP-BY-STEP GUIDE ─────────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">Step-by-Step Reference</div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step-card">
+      <div class="step-card-label">Step 01 — Explore</div>
+      <div class="step-card-title">Explore the Space</div>
+      <div class="step-card-desc">
+        Visitors are free to walk the room. <strong style="color:rgba(255,255,255,0.65)">No action required from staff</strong>
+        unless a visitor has a question. The tablet shows them a list of what to try.
+        Ensure all interactive physical elements are working before they enter.
+        The visitor advances by tapping <em>Finished</em> on the tablet.
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-card">
+      <div class="step-card-label">Step 02 — Digital</div>
+      <div class="step-card-title">Digital Experiences</div>
+      <div class="step-card-desc">
+        The tablet links directly to the BWA Experiences app.
+        There are three works: Ripple &amp; Trail, Filters, and Puzzle.
+        Visitors can try them in any order and return at any time.
+        If the link does not open, check that the experiences server is running
+        or that the relative path is correctly set (see Configuration below).
+        When done, visitor taps <em>Finished</em> to proceed.
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-card">
+      <div class="step-card-label">Step 03 — VR</div>
+      <div class="step-card-title">Virtual Reality</div>
+      <div class="step-card-desc">
+        The visitor leaves their tablet at a table and picks up a VR headset.
+        <strong style="color:rgba(255,255,255,0.65)">Staff should be available near the VR station</strong>
+        to help with headset fitting if needed.
+        Remind visitors to leave the tablet somewhere safe before putting on the headset.
+        After the VR session, they return to the tablet and tap <em>Finished</em>.
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-card">
+      <div class="step-card-label">Step 04 — App</div>
+      <div class="step-card-title">Companion App</div>
+      <div class="step-card-desc">
+        The tablet shows a button that opens the configured companion app URL.
+        Make sure the app URL is set correctly (see Configuration).
+        If using a deep link (e.g. <em>myapp://open</em>), the app must be installed on the tablet beforehand.
+        Once done, the visitor taps <em>Finished — complete journey</em> and sees the completion screen.
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── SECTION 4: TROUBLESHOOTING ────────────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">Troubleshooting</div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-text">
+        <strong>Experiences link not working (Step 2)</strong>
+        Check that the relative path in <code style="color:rgba(255,255,255,0.6);">index.html</code> points to the correct location
+        of the BWA Experience app. The default path is <code style="color:rgba(255,255,255,0.6);">../BWA experience/html/index.html</code>.
+        Adjust this if the folder structure differs.
+      </div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-text">
+        <strong>Companion app does not open (Step 4)</strong>
+        Verify that <code style="color:rgba(255,255,255,0.6);">COMPANION_APP_URL</code> is set in the script section
+        of <code style="color:rgba(255,255,255,0.6);">index.html</code>. If using a native app deep link, confirm
+        the app is installed on the tablet.
+      </div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-text">
+        <strong>Tablet screen goes to sleep mid-session</strong>
+        Go to Settings → Display → Screen Timeout and set it to <strong style="color:rgba(255,255,255,0.7)">Never</strong>.
+        This must be done once per tablet before each event.
+      </div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-text">
+        <strong>Visitor accidentally advanced a step</strong>
+        The journey can be restarted at any time from the final completion screen
+        using the <em>Start over</em> button. Alternatively, reload the page to return to the Welcome screen.
+      </div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-text">
+        <strong>VR headset not responding</strong>
+        Hold the power button for 10 seconds to force restart. If the issue persists,
+        swap for a spare headset and flag it for charging and troubleshooting after the session.
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── SECTION 5: CONFIGURATION ──────────────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">Configuration</div>
+    </div>
+
+    <p style="font-size:13px;line-height:1.75;color:rgba(255,255,255,0.4);margin-bottom:20px;">
+      Two values must be configured in <strong style="color:rgba(255,255,255,0.65);">index.html</strong> before deploying.
+      Open the file in a text editor and locate the script section at the bottom.
+    </p>
+
+    <div class="config-block">
+      <div class="config-label">Companion app URL — Step 4</div>
+      <div class="config-val">const COMPANION_APP_URL = '<span style="color:var(--accent);">#</span>';</div>
+      <div class="config-note">
+        Replace <code>#</code> with the URL or deep link of the companion app.<br>
+        Examples: <code>https://your-app.com</code> &nbsp;|&nbsp; <code>yourapp://open</code>
+      </div>
+    </div>
+
+    <div class="config-block">
+      <div class="config-label">Digital experiences link — Step 2</div>
+      <div class="config-val">href="<span style="color:var(--accent);">../BWA experience/html/index.html</span>"</div>
+      <div class="config-note">
+        Adjust the relative path if the BWA Experience folder is in a different location
+        relative to <code>BWA Journey/index.html</code>.
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── SECTION 6: BETWEEN SESSIONS ──────────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">Between Sessions — Reset Checklist</div>
+    </div>
+
+    <ul class="checklist">
+      <li>
+        <div class="check-box"></div>
+        <span>Reload <strong style="color:rgba(255,255,255,0.7)">index.html</strong> on each visitor tablet — or tap <em>Start over</em> on the completion screen.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>Return VR headsets to the station. Sanitise lenses and face padding.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>Check tablet battery levels. Plug in any below 60%.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>Reset any physical interactive elements in the room that may have been left in a modified state.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>Confirm the experiences link and companion app are still accessible on a test tablet.</span>
+      </li>
+    </ul>
+  </div>
+
+
+  <!-- Footer -->
+  <div class="guide-footer">
+    <div class="footer-note">BWA Journey — Staff Reference</div>
+    <a class="btn-action" href="index.html">← User view</a>
+  </div>
+
+</div><!-- .page -->
+
+</body>
+</html>

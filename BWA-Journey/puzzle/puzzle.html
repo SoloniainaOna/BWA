@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Responsive Video Puzzle Game</title>
+    <style>
+        body {
+            margin: 0;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+            font-family: "Segoe UI", sans-serif;
+        }
+
+        #gallery {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            text-align: center;
+        }
+
+        #videos {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        video.thumbnail {
+            width: 22vw;
+            height: 20vh;
+            cursor: pointer;
+            border: 2px solid white;
+            border-radius: 8px;
+            object-fit: cover;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        video.thumbnail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+        }
+
+        #difficulty {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #difficulty button {
+            padding: 14px 24px;
+            border: 2px solid white;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 22px;
+        }
+
+        #difficulty button:hover {
+            background: white;
+            color: black;
+        }
+
+        #selectedDifficulty {
+            margin-top: 8px;
+            font-size: 22px;
+            color: #aaa;
+        }
+
+        #puzzleContainer {
+            position: relative;
+            display: none;
+            background: black;
+            border: 4px solid white;
+            box-sizing: content-box;
+            /* Clip pieces that go outside the rectangle */
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #mainVideo {
+            width: 100%;
+            height: 100%;
+            display: none;
+            border-radius: 8px;
+        }
+
+        .piece {
+            position: absolute;
+            cursor: grab;
+            border-radius: 2px;
+            user-select: none;
+            /* Required for pointer events to work correctly on touch */
+            touch-action: none;
+            z-index: 1;
+        }
+
+        .snapped {
+            cursor: default;
+            pointer-events: none;
+        }
+
+        #backButton {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10000;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid white;
+            border-radius: 100px;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            display: none;
+            transition: background 0.3s ease;
+        }
+
+        #backButton:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        #previewVideo {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 180px;
+            height: 100px;
+            border: 2px solid white;
+            border-radius: 6px;
+            z-index: 9999;
+            display: none;
+            object-fit: cover;
+            background: black;
+            opacity: 0.85;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            #previewVideo {
+                width: 120px;
+                height: 70px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="gallery">
+        <p id="galleryInstruction" style="color:rgba(255,255,255,0.7); font-size:24px; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px;">Recreate the Painting</p>
+        <p id="galleryDesc" style="color:rgba(255,255,255,0.45); font-size:20px; max-width:80vw; text-align:center; line-height:1.6; margin-bottom:16px;">
+          Pick a difficulty level below, then choose a video to start. The video will be split into puzzle pieces — <strong style="color:rgba(255,255,255,0.7);">drag and drop</strong> each piece to its correct position to reconstruct the full image. A small preview in the top-right corner shows you the original. The fewer the pieces, the easier the puzzle!
+        </p>
+
+        <div id="difficulty">
+            <button data-rows="2" data-cols="4">Easy (8)</button>
+            <button data-rows="4" data-cols="4">Medium (16)</button>
+            <button data-rows="4" data-cols="6">Hard (24)</button>
+            <button data-rows="6" data-cols="6">Extreme (36)</button>
+        </div>
+
+        <div id="selectedDifficulty">
+            Selected: <strong>Easy (8)</strong>
+        </div>
+
+        <div id="videos">
+            <video class="thumbnail" src="/videos/2KH.mov" muted loop autoplay playsinline></video>
+            <video class="thumbnail" src="/videos/test6.mov" muted loop autoplay playsinline></video>
+            <video class="thumbnail" src="/videos/test5.mov" muted loop autoplay playsinline></video>
+            <video class="thumbnail" src="/videos/test4.mov" muted loop autoplay playsinline></video>
+        </div>
+    </div>
+
+    <div id="puzzleContainer">
+        <video id="mainVideo" autoplay loop muted playsinline></video>
+    </div>
+
+    <video id="previewVideo" autoplay loop muted playsinline></video>
+    <button id="backButton">← Back</button>
+
+
+    <script>
+        const gallery = document.getElementById("gallery");
+        const puzzleContainer = document.getElementById("puzzleContainer");
+        const mainVideo = document.getElementById("mainVideo");
+        const previewVideo = document.getElementById("previewVideo");
+        const backButton = document.getElementById("backButton");
+        const selectedDifficultyText = document.getElementById("selectedDifficulty");
+
+        let ROWS = 2,
+            COLS = 4,
+            pieces = [],
+            placedCount = 0,
+            currentDifficulty = "Easy (8)",
+            currentVideoSrc = "",
+            scaleRatio = 1,
+            animFrame;
+
+        function isVRDevice() {
+            const ratio = window.innerWidth / window.innerHeight;
+            return (
+                ratio > 2 ||
+                navigator.userAgent.toLowerCase().includes("oculus") ||
+                navigator.userAgent.toLowerCase().includes("quest")
+            );
+        }
+
+        document.querySelectorAll("#difficulty button").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                ROWS = parseInt(btn.dataset.rows);
+                COLS = parseInt(btn.dataset.cols);
+                currentDifficulty = btn.innerText;
+                selectedDifficultyText.innerHTML = `Selected: <strong>${currentDifficulty}</strong>`;
+            });
+        });
+
+        document.querySelectorAll(".thumbnail").forEach((thumb) => {
+            thumb.addEventListener("click", () => startPuzzle(thumb.src));
+        });
+
+        backButton.addEventListener("click", resetToGallery);
+
+        function resetToGallery() {
+            cancelAnimationFrame(animFrame);
+            puzzleContainer.style.display = "none";
+            mainVideo.pause();
+            mainVideo.style.display = "none";
+            previewVideo.pause();
+            previewVideo.style.display = "none";
+            gallery.style.display = "flex";
+            backButton.style.display = "none";
+            try { window.parent.document.getElementById('btnBack').style.display = 'flex'; } catch(e) {}
+            puzzleContainer.style.background = "black";
+            puzzleContainer.style.border = "4px solid white";
+        }
+
+        function startPuzzle(src) {
+            puzzleContainer.innerHTML = "";
+            puzzleContainer.style.background = "black";
+            puzzleContainer.appendChild(mainVideo);
+            mainVideo.style.display = "none";
+            previewVideo.style.display = "none";
+
+            gallery.style.display = "none";
+            puzzleContainer.style.display = "block";
+            backButton.style.display = "block";
+            try { window.parent.document.getElementById('btnBack').style.display = 'none'; } catch(e) {}
+            puzzleContainer.style.border = "4px solid white";
+
+            currentVideoSrc = src;
+            mainVideo.src = src;
+            mainVideo.currentTime = 0;
+            mainVideo.pause();
+
+            previewVideo.src = src;
+            previewVideo.style.display = "block";
+            previewVideo.play();
+
+            mainVideo.onloadedmetadata = () => {
+                resizePuzzleContainer();
+                createPieces();
+                scatterPieces();
+                animatePieces();
+            };
+
+            window.addEventListener("resize", onResize);
+            window.addEventListener("orientationchange", onResize);
+        }
+
+        function onResize() {
+            resizePuzzleContainer();
+            // Recompute target positions and update pieces
+            const vw = mainVideo.videoWidth * scaleRatio;
+            const vh = mainVideo.videoHeight * scaleRatio;
+            const pw = vw / COLS;
+            const ph = vh / ROWS;
+            pieces.forEach((piece, i) => {
+                const r = Math.floor(i / COLS);
+                const c = i % COLS;
+                const tx = c * pw;
+                const ty = r * ph;
+                piece.dataset.targetX = tx;
+                piece.dataset.targetY = ty;
+                piece.style.width = pw + "px";
+                piece.style.height = ph + "px";
+                // Move snapped pieces to their new correct positions
+                if (piece.classList.contains("snapped")) {
+                    piece.style.left = tx + "px";
+                    piece.style.top = ty + "px";
+                }
+            });
+        }
+
+        function resizePuzzleContainer() {
+            if (!mainVideo.videoWidth) return;
+
+            const videoW = mainVideo.videoWidth;
+            const videoH = mainVideo.videoHeight;
+            const videoRatio = videoW / videoH;
+
+            let maxW, maxH;
+            if (isVRDevice()) {
+                const vv = window.visualViewport;
+                maxW = vv ? vv.width : window.innerWidth;
+                maxH = vv ? vv.height : window.innerHeight;
+                puzzleContainer.style.boxSizing = "border-box";
+            } else {
+                // Leave a margin so the puzzle is not edge-to-edge
+                const margin = (window.innerWidth <= window.innerHeight) ? 0.90 : 0.85;
+                maxW = window.innerWidth * margin;
+                maxH = window.innerHeight * margin;
+                puzzleContainer.style.boxSizing = "content-box";
+            }
+
+            // Fit the video inside the available space while preserving aspect ratio
+            const containerRatio = maxW / maxH;
+            let finalW, finalH;
+            if (videoRatio > containerRatio) {
+                finalW = maxW;
+                finalH = maxW / videoRatio;
+            } else {
+                finalH = maxH;
+                finalW = maxH * videoRatio;
+            }
+
+            puzzleContainer.style.width = finalW + "px";
+            puzzleContainer.style.height = finalH + "px";
+
+            // scaleRatio maps video pixels → container pixels
+            scaleRatio = finalW / videoW;
+        }
+
+        function createPieces() {
+            pieces = [];
+            placedCount = 0;
+            puzzleContainer.innerHTML = "";
+            puzzleContainer.appendChild(mainVideo);
+            mainVideo.style.display = "none";
+            previewVideo.style.display = "block";
+
+            const vw = mainVideo.videoWidth * scaleRatio;
+            const vh = mainVideo.videoHeight * scaleRatio;
+            const pw = vw / COLS;
+            const ph = vh / ROWS;
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = mainVideo.videoWidth / COLS;
+                    canvas.height = mainVideo.videoHeight / ROWS;
+                    canvas.classList.add("piece");
+
+                    canvas.dataset.targetX = c * pw;
+                    canvas.dataset.targetY = r * ph;
+
+                    canvas.style.width = pw + "px";
+                    canvas.style.height = ph + "px";
+                    canvas.style.left = canvas.dataset.targetX + "px";
+                    canvas.style.top = canvas.dataset.targetY + "px";
+
+                    makeDraggable(canvas);
+                    puzzleContainer.appendChild(canvas);
+                    pieces.push(canvas);
+                }
+            }
+        }
+
+        function scatterPieces() {
+            const containerW = puzzleContainer.clientWidth;
+            const containerH = puzzleContainer.clientHeight;
+
+            pieces.forEach((piece) => {
+                const randX = Math.random() * (containerW - piece.clientWidth);
+                const randY = Math.random() * (containerH - piece.clientHeight);
+                piece.style.left = randX + "px";
+                piece.style.top = randY + "px";
+            });
+        }
+
+        function makeDraggable(piece) {
+            let offsetX = 0, offsetY = 0;
+
+            piece.addEventListener("pointerdown", (e) => {
+                if (piece.classList.contains("snapped")) return;
+
+                // Only react to the primary pointer (first finger / mouse button)
+                // This blocks any additional fingers from hijacking or teleporting the piece
+                if (!e.isPrimary) return;
+
+                e.preventDefault();
+
+                // Capture the pointer so all future move/up events go to this piece,
+                // even if the finger drifts outside the element
+                piece.setPointerCapture(e.pointerId);
+
+                const pieceRect = piece.getBoundingClientRect();
+                offsetX = e.clientX - pieceRect.left;
+                offsetY = e.clientY - pieceRect.top;
+                piece.style.zIndex = 1000;
+            });
+
+            piece.addEventListener("pointermove", (e) => {
+                if (!e.isPrimary) return;
+                if (!piece.hasPointerCapture(e.pointerId)) return;
+                e.preventDefault();
+
+                const containerRect = puzzleContainer.getBoundingClientRect();
+                // clientLeft/clientTop = border width, so we skip into the content area
+                const borderL = puzzleContainer.clientLeft;
+                const borderT = puzzleContainer.clientTop;
+
+                let newX = e.clientX - (containerRect.left + borderL) - offsetX;
+                let newY = e.clientY - (containerRect.top + borderT) - offsetY;
+
+                // Constrain piece fully within the puzzle rectangle
+                const maxX = puzzleContainer.clientWidth - piece.clientWidth;
+                const maxY = puzzleContainer.clientHeight - piece.clientHeight;
+                newX = Math.max(0, Math.min(maxX, newX));
+                newY = Math.max(0, Math.min(maxY, newY));
+
+                piece.style.left = newX + "px";
+                piece.style.top = newY + "px";
+            });
+
+            const onRelease = (e) => {
+                if (!e.isPrimary) return;
+                if (!piece.hasPointerCapture(e.pointerId)) return;
+                piece.releasePointerCapture(e.pointerId);
+                piece.style.zIndex = 1;
+                checkSnap(piece);
+            };
+
+            piece.addEventListener("pointerup", onRelease);
+            piece.addEventListener("pointercancel", onRelease);
+        }
+
+        function checkSnap(piece) {
+            const targetX = parseFloat(piece.dataset.targetX);
+            const targetY = parseFloat(piece.dataset.targetY);
+            const curX = parseFloat(piece.style.left);
+            const curY = parseFloat(piece.style.top);
+
+            // Snap threshold: 30% of piece size, clamped between 20px and 60px
+            const threshold = Math.min(60, Math.max(20, piece.clientWidth * 0.30));
+
+            if (Math.abs(curX - targetX) < threshold && Math.abs(curY - targetY) < threshold) {
+                piece.style.left = targetX + "px";
+                piece.style.top = targetY + "px";
+                piece.classList.add("snapped");
+                placedCount++;
+                if (placedCount === ROWS * COLS) finishPuzzle();
+            }
+        }
+
+        function animatePieces() {
+            function draw() {
+                const vw = mainVideo.videoWidth;
+                const vh = mainVideo.videoHeight;
+                const pw = vw / COLS;
+                const ph = vh / ROWS;
+
+                pieces.forEach((piece, i) => {
+                    const ctx = piece.getContext("2d");
+                    const r = Math.floor(i / COLS);
+                    const c = i % COLS;
+                    ctx.clearRect(0, 0, piece.width, piece.height);
+                    ctx.drawImage(mainVideo, c * pw, r * ph, pw, ph, 0, 0, piece.width, piece.height);
+                });
+
+                animFrame = requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        function finishPuzzle() {
+            pieces.forEach((p) => p.remove());
+            puzzleContainer.style.border = "none";
+            previewVideo.style.display = "none";
+            mainVideo.style.display = "block";
+            mainVideo.play();
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Video Gallery Full Screen Stretch + Trail + Zoom Transition</title>
+  <style>
+    * { cursor: none !important; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #gallery {
+      display: flex;
+      gap: 10px;
+      overflow: hidden;
+      width: 100%;
+      touch-action: pan-y;
+    }
+
+    video.thumbnail {
+      width: 25vw;
+      height: 27vh;
+      cursor: pointer;
+      border: 2px solid white;
+      border-radius: 8px;
+      object-fit: fill;
+      transition: transform 0.5s ease, opacity 0.5s ease;
+      flex-shrink: 0;
+    }
+
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #backButton {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 100px;
+      background: rgba(0,0,0,0.6);
+      color: rgba(255,255,255,0.7);
+      font-size: 11px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.3s, color 0.3s;
+    }
+
+    #backButton:hover {
+      border-color: rgba(200,169,110,0.8);
+      color: rgba(200,169,110,1);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="gallery">
+    <video class="thumbnail" src="/videos/2KH.mov" muted loop autoplay playsinline></video>
+    <video class="thumbnail" src="/videos/2KF.mov" muted loop autoplay playsinline></video>
+    <video class="thumbnail" src="/videos/test.mov" muted loop autoplay playsinline></video>
+    <!--<video class="thumbnail" src="/videos/lodp.mov" muted loop autoplay playsinline></video>-->
+    <video class="thumbnail" src="/videos/test4.mov" muted loop autoplay playsinline></video>
+  </div>
+
+  <video id="mainVideo" autoplay loop muted playsinline style="display:none;"></video>
+  <canvas id="webgl"></canvas>
+  <button id="backButton">← Change video</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.js"></script>
+  <script>
+    const canvas = document.getElementById("webgl");
+    const mainVideo = document.getElementById("mainVideo");
+    const backButton = document.getElementById("backButton");
+    const gallery = document.getElementById("gallery");
+    const thumbnails = document.querySelectorAll(".thumbnail");
+
+    // THREE.js setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    const MAX_POINTS = 20;
+    const MAX_RIPPLES = 5;
+
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        uTexture: { value: null },
+        uTrail: { value: Array(MAX_POINTS).fill(new THREE.Vector3(-10, -10, 0)) },
+        uTrailCount: { value: 0 },
+        uTime: { value: 0.0 },
+        uRipples: { value: Array(MAX_RIPPLES).fill(new THREE.Vector3(-10, -10, 0)) },
+        uRippleCount: { value: 0 }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D uTexture;
+        uniform vec3 uTrail[${MAX_POINTS}];
+        uniform int uTrailCount;
+        uniform float uTime;
+        uniform vec3 uRipples[${MAX_RIPPLES}];
+        uniform int uRippleCount;
+        varying vec2 vUv;
+
+        void main() {
+          vec2 uv = vUv;
+          vec2 offset = vec2(0.0);
+
+          float radius = 0.07;
+          float invR2x2 = 1.0 / (2.0 * radius * radius);
+
+          // FLOWING TRAIL — continuous segments with Gaussian falloff
+          for(int i = 0; i < ${MAX_POINTS} - 1; i++){
+            if(i >= uTrailCount - 1) break;
+
+            vec2 a = uTrail[i].xy;
+            vec2 b = uTrail[i + 1].xy;
+            float sa = uTrail[i].z;
+            float sb = uTrail[i + 1].z;
+
+            vec2 ab = b - a;
+            float len2 = dot(ab, ab);
+            float t = len2 < 0.000001 ? 0.0 : clamp(dot(uv - a, ab) / len2, 0.0, 1.0);
+            vec2 closest = a + t * ab;
+            float dist = distance(uv, closest);
+            float strength = mix(sa, sb, t);
+
+            float falloff = exp(-dist * dist * invR2x2);
+            float wave = 0.6 + 0.4 * sin(5.0 * dist - uTime * 2.5);
+
+            vec2 dir = uv - closest;
+            float dirLen = length(dir);
+            dir = dirLen > 0.0001 ? dir / dirLen : vec2(0.0);
+
+            offset += dir * falloff * strength * wave * 0.008;
+          }
+
+          if(uTrailCount == 1){
+            vec2 pt = uTrail[0].xy;
+            float s  = uTrail[0].z;
+            float d  = distance(uv, pt);
+            float fo = exp(-d * d * invR2x2);
+            float w  = 0.6 + 0.4 * sin(5.0 * d - uTime * 2.5);
+            vec2 dir = normalize(uv - pt + 0.0001);
+            offset += dir * fo * s * w * 0.008;
+          }
+
+          // WAKE RIPPLES — sample every 3rd trail point to reduce cost
+          for(int i = 0; i < ${MAX_POINTS}; i += 3){
+            if(i >= uTrailCount) break;
+            vec2 wp = uTrail[i].xy;
+            float ws = uTrail[i].z;
+            if(ws < 0.05) continue;
+
+            float wd = distance(uv, wp);
+            if(wd > 0.25) continue;
+            float age = 1.0 - ws;
+
+            float wSpeed = 0.18;
+            float wFront = age * wSpeed;
+            float wMask = smoothstep(wFront + 0.003, wFront - 0.012, wd);
+
+            float wk = 55.0;
+            float wWave = sin(wk * wd - wk * wSpeed * age);
+            float wDecay = 1.0 / (1.0 + 12.0 * wd);
+            float wAmp = ws * ws;
+
+            vec2 wDir = normalize(uv - wp + 0.0001);
+            offset += wDir * wWave * wMask * wDecay * wAmp * 0.005;
+          }
+
+          // CLICK RIPPLES — multiple simultaneous expanding water waves
+          for(int i = 0; i < ${MAX_RIPPLES}; i++){
+            if(i >= uRippleCount) break;
+            vec2 rPos = uRipples[i].xy;
+            float rT = uRipples[i].z;
+
+            float fade = exp(-rT * 0.8);
+            if(fade < 0.02) continue;
+
+            float dist = distance(uv, rPos);
+            float speed = 0.35;
+            float front = speed * rT;
+            if(dist > front + 0.05) continue;
+            float mask = smoothstep(front + 0.005, front - 0.04, dist);
+
+            float k = 45.0;
+            float wave = sin(k * dist - k * speed * rT);
+            float decay = 1.0 / (1.0 + 8.0 * dist);
+
+            vec2 dir = normalize(uv - rPos + 0.0001);
+            offset += dir * wave * mask * decay * fade * 0.014;
+          }
+
+          vec3 color = texture2D(uTexture, uv + offset).rgb;
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+      transparent: true
+    });
+
+    const plane = new THREE.Mesh(geometry, material);
+    scene.add(plane);
+
+    let videoTexture = new THREE.VideoTexture(mainVideo);
+    videoTexture.minFilter = THREE.LinearFilter;
+    videoTexture.magFilter = THREE.LinearFilter;
+    videoTexture.format = THREE.RGBFormat;
+    videoTexture.generateMipmaps = false;
+    material.uniforms.uTexture.value = videoTexture;
+
+    // Trail
+    let dragging = false;
+    let trail = [];
+    const trailArr = Array.from({length: MAX_POINTS}, () => new THREE.Vector3(-10, -10, 0));
+    const rippleArr = Array.from({length: MAX_RIPPLES}, () => new THREE.Vector3(-10, -10, 0));
+
+    function addTrailPoint(x, y) {
+      const mx = x / window.innerWidth;
+      const my = 1.0 - y / window.innerHeight;
+      if (trail.length > 0) {
+        const last = trail[trail.length - 1];
+        const dx = mx - last.x;
+        const dy = my - last.y;
+        if (dx * dx + dy * dy < 0.0003) return;
+      }
+      trail.push(new THREE.Vector3(mx, my, 1.0));
+      if (trail.length > MAX_POINTS) trail.shift();
+    }
+
+    // Ripples — multiple simultaneous
+    let ripples = [];
+
+    function createRipple(x, y) {
+      const mx = x / window.innerWidth;
+      const my = 1.0 - y / window.innerHeight;
+      ripples.push({ x: mx, y: my, time: 0.001 });
+      if (ripples.length > MAX_RIPPLES) ripples.shift();
+    }
+
+    // Mouse
+    window.addEventListener('mousedown', e => {
+      dragging = true;
+      addTrailPoint(e.clientX, e.clientY);
+      createRipple(e.clientX, e.clientY);
+    });
+    window.addEventListener('mousemove', e => {
+      if (dragging) addTrailPoint(e.clientX, e.clientY);
+    });
+    window.addEventListener('mouseup', () => dragging = false);
+
+    // Touch — handle ALL fingers
+    window.addEventListener('touchstart', e => {
+      dragging = true;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        addTrailPoint(t.clientX, t.clientY);
+        createRipple(t.clientX, t.clientY);
+      }
+    });
+    window.addEventListener('touchend', e => {
+      if (e.touches.length === 0) dragging = false;
+    });
+    window.addEventListener('touchmove', e => {
+      if (dragging) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          addTrailPoint(t.clientX, t.clientY);
+        }
+      }
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (mainVideo.readyState >= mainVideo.HAVE_CURRENT_DATA) videoTexture.needsUpdate = true;
+
+      // Fade trail
+      for (let i = 0; i < trail.length; i++) trail[i].z *= 0.97;
+      trail = trail.filter(p => p.z > 0.02);
+      for (let i = 0; i < MAX_POINTS; i++) {
+        if (i < trail.length) {
+          trailArr[i].copy(trail[i]);
+        } else {
+          trailArr[i].set(-10, -10, 0);
+        }
+      }
+      material.uniforms.uTrail.value = trailArr;
+      material.uniforms.uTrailCount.value = trail.length;
+      material.uniforms.uTime.value += 0.02;
+
+      // Ripple animation — advance all active ripples, remove expired
+      for (let i = 0; i < ripples.length; i++) ripples[i].time += 0.02;
+      ripples = ripples.filter(r => r.time < 5.0);
+      for (let i = 0; i < MAX_RIPPLES; i++) {
+        if (i < ripples.length) {
+          rippleArr[i].set(ripples[i].x, ripples[i].y, ripples[i].time);
+        } else {
+          rippleArr[i].set(-10, -10, 0);
+        }
+      }
+      material.uniforms.uRipples.value = rippleArr;
+      material.uniforms.uRippleCount.value = ripples.length;
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Gallery swipe logic with click detection
+    let galleryOffset = 0;
+let startX = 0;
+let isDraggingGallery = false;
+
+gallery.addEventListener("pointerdown", e => {
+  startX = e.clientX;
+  isDraggingGallery = false;
+});
+
+gallery.addEventListener("pointermove", e => {
+  if (e.buttons !== 1) return;
+  const dx = e.clientX - startX;
+
+  if (Math.abs(dx) > 10) { // drag threshold
+    isDraggingGallery = true;
+    gallery.style.transform = `translateX(${galleryOffset + dx}px)`;
+  }
+});
+
+gallery.addEventListener("pointerup", e => {
+  const dx = e.clientX - startX;
+
+  if (isDraggingGallery) {
+    // User was dragging → update offset only
+    galleryOffset += dx;
+
+    const maxOffset = 0;
+    const minOffset = -((thumbnails.length - 3) * 210); // 3 thumbnails visible
+    if (galleryOffset > maxOffset) galleryOffset = maxOffset;
+    if (galleryOffset < minOffset) galleryOffset = minOffset;
+
+    gallery.style.transition = "transform 0.3s ease";
+    gallery.style.transform = `translateX(${galleryOffset}px)`;
+    setTimeout(() => (gallery.style.transition = ""), 300);
+  } else {
+    // No drag → treat it as a click on a thumbnail
+    const target = e.target.closest(".thumbnail");
+    if (target) openVideo(target);
+  }
+
+  isDraggingGallery = false;
+});
+
+// Helper: open a video in fullscreen with transition
+function openVideo(video) {
+  video.style.transform = "scale(2.5)";
+  video.style.opacity = "0";
+
+  setTimeout(() => {
+    mainVideo.src = video.src;
+    mainVideo.currentTime = 0;
+    mainVideo.play().catch(err => console.error(err));
+
+    // Reset WebGL texture
+    videoTexture.dispose();
+    videoTexture.image = mainVideo;
+    videoTexture.needsUpdate = true;
+
+    canvas.style.display = "block";
+    setTimeout(() => (canvas.style.opacity = 1), 50);
+
+    backButton.style.display = "flex";
+    gallery.style.display = "none";
+    try { window.parent.document.getElementById('btnBack').style.display = 'none'; } catch(e) {}
+  }, 500);
+}
+
+
+    // Click thumbnail -> fullscreen with zoom
+    thumbnails.forEach(video => {
+      video.addEventListener("click", () => {
+        if (isDraggingGallery) return; // prevent accidental click after drag
+
+        video.style.transform = "scale(2.5)";
+        video.style.opacity = "0";
+
+        setTimeout(() => {
+          mainVideo.src = video.src;
+          mainVideo.currentTime = 0;
+          mainVideo.play().catch(err => console.error(err));
+
+          // Reset WebGL texture
+          videoTexture.dispose();
+          videoTexture.image = mainVideo;
+          videoTexture.needsUpdate = true;
+
+          canvas.style.display = "block";
+          setTimeout(() => canvas.style.opacity = 1, 50);
+
+          backButton.style.display = "flex";
+          gallery.style.display = "none";
+          try { window.parent.document.getElementById('btnBack').style.display = 'none'; } catch(e) {}
+        }, 500);
+      });
+    });
+
+    // Back button -> gallery with zoom-out
+    backButton.addEventListener("click", () => {
+      canvas.style.opacity = 0;
+      setTimeout(() => {
+        mainVideo.pause();
+        canvas.style.display = "none";
+        backButton.style.display = "none";
+        gallery.style.display = "flex";
+        thumbnails.forEach(t => {
+          t.style.transform = "scale(1)";
+          t.style.opacity = "1";
+        });
+        try { window.parent.document.getElementById('btnBack').style.display = 'flex'; } catch(e) {}
+      }, 300);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+services:
+  bwa2:
+    build: .
+    container_name: bwa-platform-2
+    ports:
+      - "8081:80"
+    volumes:
+      - ./videos:/usr/share/nginx/html/videos:ro
+      - photos2:/usr/share/nginx/html/photos
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    container_name: bwa-api-2
+    environment:
+      - IG_ACCESS_TOKEN=${IG_ACCESS_TOKEN}
+      - IG_ACCOUNT_ID=${IG_ACCOUNT_ID}
+      # Public URL reachable by Instagram servers to download the photo
+      - PUBLIC_URL=${PUBLIC_URL:-http://localhost:8081}
+    volumes:
+      - photos2:/photos
+    restart: unless-stopped
+
+volumes:
+  photos2:
+
+# Access : http://localhost:8081
+# On Quest : http://<YOUR_PC_IP>:8081

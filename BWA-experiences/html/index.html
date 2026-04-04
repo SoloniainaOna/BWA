@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Experiences</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="theme-color" content="#000000">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --black: #000;
+      --white: #fff;
+      --dim: rgba(255,255,255,0.12);
+      --dim2: rgba(255,255,255,0.06);
+      --accent: #c8a96e;
+      --accent-dim: rgba(200,169,110,0.18);
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      cursor: none;
+    }
+
+    /* ── CURSOR ── */
+    #cursor {
+      position: fixed;
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: transform 0.1s ease, width 0.25s ease, height 0.25s ease, opacity 0.25s ease;
+    }
+    #cursor.hover {
+      width: 40px; height: 40px;
+      background: transparent;
+      border: 1px solid var(--accent);
+      opacity: 0.6;
+    }
+
+    /* ── NOISE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.035;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── BACKGROUND GRADIENT ── */
+    .bg-glow {
+      position: fixed; inset: 0;
+      background: 
+        radial-gradient(ellipse 60% 40% at 20% 50%, rgba(200,169,110,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 60% at 80% 30%, rgba(255,255,255,0.03) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── MAIN LAYOUT ── */
+    #app {
+      position: relative;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      z-index: 2;
+      opacity: 0;
+      animation: fadeIn 1.2s ease 0.3s forwards;
+    }
+
+    @keyframes fadeIn { to { opacity: 1; } }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 48px 0;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    #btnFullscreen {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border: 1px solid var(--dim);
+      border-radius: 100px;
+      background: var(--dim2);
+      color: rgba(255,255,255,0.6);
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: none;
+      transition: border-color 0.3s, color 0.3s, background 0.3s;
+      backdrop-filter: blur(10px);
+    }
+
+    #btnFullscreen:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    #btnFullscreen svg { width: 13px; height: 13px; fill: currentColor; }
+
+    /* ── HERO TEXT ── */
+    .hero {
+      padding: 36px 48px 20px;
+      flex-shrink: 0;
+    }
+
+    .hero-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+      opacity: 0;
+      animation: slideUp 0.8s ease 0.6s forwards;
+    }
+
+    .hero-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(36px, 5vw, 68px);
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+      color: var(--white);
+      opacity: 0;
+      animation: slideUp 0.8s ease 0.8s forwards;
+    }
+
+    .hero-title em {
+      font-style: italic;
+      color: rgba(255,255,255,0.5);
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      margin: 0 48px;
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--dim) 40%, transparent 100%);
+      opacity: 0;
+      animation: fadeIn 1s ease 1s forwards;
+      flex-shrink: 0;
+    }
+
+    /* ── CARDS GRID ── */
+    .cards {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--dim2);
+      margin: 28px 48px 28px;
+      border: 1px solid var(--dim2);
+      border-radius: 4px;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .card {
+      position: relative;
+      background: var(--black);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 32px;
+      cursor: none;
+      overflow: hidden;
+      transition: background 0.4s ease;
+      text-decoration: none;
+      color: inherit;
+      opacity: 0;
+      transform: translateY(24px);
+    }
+
+    .card:nth-child(1) { animation: slideUp 0.7s ease 1.0s forwards; }
+    .card:nth-child(2) { animation: slideUp 0.7s ease 1.15s forwards; }
+    .card:nth-child(3) { animation: slideUp 0.7s ease 1.3s forwards; }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 30% 80%, var(--accent-dim), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .card:hover { background: rgba(255,255,255,0.02); }
+    .card:hover::before { opacity: 1; }
+
+    /* Top accent line */
+    .card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .card:hover::after { transform: scaleX(1); }
+
+    .card-number {
+      position: absolute;
+      top: 28px; right: 32px;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 72px;
+      font-weight: 300;
+      line-height: 1;
+      color: rgba(255,255,255,0.04);
+      transition: color 0.4s ease;
+      user-select: none;
+    }
+
+    .card:hover .card-number { color: rgba(200,169,110,0.08); }
+
+    .card-icon {
+      width: 44px; height: 44px;
+      margin-bottom: 28px;
+      opacity: 0.7;
+      transition: opacity 0.3s ease, transform 0.4s ease;
+    }
+
+    .card:hover .card-icon {
+      opacity: 1;
+      transform: translateY(-4px);
+    }
+
+    .card-label {
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .card-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(22px, 2.2vw, 32px);
+      line-height: 1.15;
+      margin-bottom: 14px;
+    }
+
+    .card-desc {
+      font-size: 12px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.4);
+      max-width: 260px;
+    }
+
+    .card-arrow {
+      margin-top: 28px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      transition: color 0.3s ease, gap 0.3s ease;
+    }
+
+    .card:hover .card-arrow {
+      color: var(--accent);
+      gap: 16px;
+    }
+
+    .card-arrow::after {
+      content: '→';
+      font-size: 16px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px 24px;
+      flex-shrink: 0;
+    }
+
+    .footer-hint {
+      font-size: 11px;
+      color: rgba(255,255,255,0.2);
+      letter-spacing: 0.1em;
+    }
+
+    /* ── QUEST INSTALL TOAST ── */
+    #questToast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(10,10,10,0.95);
+      border: 1px solid var(--dim);
+      border-radius: 12px;
+      padding: 18px 24px;
+      max-width: 380px;
+      width: 90%;
+      z-index: 1000;
+      backdrop-filter: blur(20px);
+      opacity: 0;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      pointer-events: none;
+    }
+
+    #questToast.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+
+    .toast-title {
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .toast-steps {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .toast-steps li {
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.5;
+    }
+
+    .toast-steps li::before {
+      content: attr(data-n);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    #toastClose {
+      position: absolute;
+      top: 12px; right: 14px;
+      background: none; border: none;
+      color: rgba(255,255,255,0.3);
+      font-size: 18px;
+      cursor: none;
+      line-height: 1;
+    }
+
+    /* ── FULLSCREEN SPLASH ── */
+    #splash {
+      position: fixed; inset: 0;
+      background: var(--black);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      z-index: 500;
+      transition: opacity 0.6s ease;
+    }
+
+    #splash.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .splash-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .splash-logo span { color: var(--accent); }
+
+    .splash-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(28px, 4vw, 52px);
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+    }
+
+    #btnEnter {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 36px;
+      border: 1px solid var(--accent);
+      border-radius: 100px;
+      background: transparent;
+      color: var(--accent);
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      cursor: none;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    #btnEnter:hover {
+      background: var(--accent);
+      color: var(--black);
+    }
+
+    .splash-note {
+      font-size: 11px;
+      color: rgba(255,255,255,0.2);
+      letter-spacing: 0.1em;
+      text-align: center;
+    }
+
+    /* ── EXPERIENCE OVERLAY ── */
+    #expOverlay {
+      position: fixed; inset: 0;
+      z-index: 800;
+      background: var(--black);
+      display: none;
+      flex-direction: column;
+    }
+
+    #expOverlay.visible { display: flex; }
+
+    #btnBack {
+      position: absolute;
+      top: 18px; left: 18px;
+      z-index: 801;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border: 1px solid var(--dim);
+      border-radius: 100px;
+      background: rgba(0,0,0,0.6);
+      color: rgba(255,255,255,0.6);
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: none;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.3s, color 0.3s;
+    }
+
+    #btnBack:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    #expFrame {
+      flex: 1;
+      width: 100%;
+      border: none;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      header { padding: 20px 24px 0; }
+      .hero { padding: 24px 24px 16px; }
+      .divider { margin: 0 24px; }
+      .cards {
+        grid-template-columns: 1fr;
+        margin: 20px 24px 20px;
+        gap: 1px;
+      }
+      .card { padding: 24px; }
+      footer { padding: 0 24px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Custom cursor -->
+  <div id="cursor"></div>
+
+  <!-- Background -->
+  <div class="bg-glow"></div>
+
+  <!-- Fullscreen splash -->
+  <div id="splash">
+    <div class="splash-logo">BW<span>A</span></div>
+    <div class="splash-title">Immersive Experiences</div>
+    <button id="btnEnter">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      Enter fullscreen
+    </button>
+    <div class="splash-note">Tap to continue without fullscreen</div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app">
+    <header>
+      <div class="logo">BW<span>A</span> — Platform</div>
+      <div class="header-right">
+        <button id="btnQuest" style="display:flex;align-items:center;gap:8px;padding:9px 18px;border:1px solid var(--dim);border-radius:100px;background:var(--dim2);color:rgba(255,255,255,0.4);font-family:'Syne',sans-serif;font-size:11px;letter-spacing:.15em;text-transform:uppercase;cursor:none;transition:all .3s;backdrop-filter:blur(10px);">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+          Add to Quest
+        </button>
+        <button id="btnFullscreen">
+          <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          Fullscreen
+        </button>
+      </div>
+    </header>
+
+    <div class="hero">
+      <div class="hero-eyebrow">Choose an experience</div>
+      <h1 class="hero-title">Explore <em>the image</em><br>differently</h1>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="cards">
+
+      <!-- Ripple + Trail -->
+      <a class="card" href="gallery-ripple/gallery.html" data-exp>
+        <div class="card-number">01</div>
+        <svg class="card-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="24" r="4" fill="white" opacity="0.9"/>
+          <circle cx="24" cy="24" r="9" stroke="white" stroke-width="1" opacity="0.5"/>
+          <circle cx="24" cy="24" r="15" stroke="white" stroke-width="0.7" opacity="0.3"/>
+          <circle cx="24" cy="24" r="21" stroke="white" stroke-width="0.5" opacity="0.15"/>
+          <path d="M10 30 Q16 20 24 24 Q32 28 38 18" stroke="#c8a96e" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.8"/>
+        </svg>
+        <div class="card-label">Experience 01</div>
+        <div class="card-title">Interact with<br>the painting</div>
+        <div class="card-desc">Let your movement distort the surface. Each motion creates concentric waves and a fluid trail.</div>
+        <div class="card-arrow">Explore</div>
+      </a>
+
+      <!-- Division + Filtres -->
+      <a class="card" href="filters/index.html" data-exp>
+        <div class="card-number">02</div>
+        <svg class="card-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="6" width="36" height="36" rx="2" stroke="white" stroke-width="1" opacity="0.3"/>
+          <line x1="24" y1="6" x2="18" y2="42" stroke="white" stroke-width="1.2" opacity="0.7" stroke-linecap="round"/>
+          <line x1="6" y1="22" x2="42" y2="28" stroke="#c8a96e" stroke-width="1" opacity="0.8" stroke-linecap="round"/>
+          <rect x="6" y="6" width="13" height="16" fill="white" opacity="0.06"/>
+          <rect x="26" y="28" width="16" height="14" fill="#c8a96e" opacity="0.08"/>
+        </svg>
+        <div class="card-label">Experience 02</div>
+        <div class="card-title">Create your<br>own art</div>
+        <div class="card-desc">Divide the image by hand. Apply distinct filters to each zone — black & white, sepia, negative and more.</div>
+        <div class="card-arrow">Explore</div>
+      </a>
+
+      <!-- Puzzle -->
+      <a class="card" href="puzzle/puzzle.html" data-exp>
+        <div class="card-number">03</div>
+        <svg class="card-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="6" width="15" height="15" rx="1.5" stroke="white" stroke-width="1" opacity="0.5"/>
+          <rect x="27" y="6" width="15" height="15" rx="1.5" stroke="white" stroke-width="1" opacity="0.5"/>
+          <rect x="6" y="27" width="15" height="15" rx="1.5" stroke="white" stroke-width="1" opacity="0.5"/>
+          <rect x="27" y="27" width="15" height="15" rx="1.5" stroke="#c8a96e" stroke-width="1.2" opacity="0.9" fill="rgba(200,169,110,0.06)"/>
+          <line x1="22" y1="14" x2="26" y2="14" stroke="white" stroke-width="1" opacity="0.3"/>
+          <line x1="14" y1="22" x2="14" y2="26" stroke="white" stroke-width="1" opacity="0.3"/>
+        </svg>
+        <div class="card-label">Experience 03</div>
+        <div class="card-title">Recreate<br>the painting</div>
+        <div class="card-desc">Reconstruct a video piece by piece. Choose your difficulty — from 8 to 36 pieces — and your sequence.</div>
+        <div class="card-arrow">Explore</div>
+      </a>
+
+    </div>
+
+    <footer>
+      <div class="footer-hint">Interactive experiences</div>
+    </footer>
+  </div>
+
+  <!-- Experience iframe overlay -->
+  <div id="expOverlay">
+    <button id="btnBack">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Back
+    </button>
+    <iframe id="expFrame" src="" allowfullscreen></iframe>
+  </div>
+
+  <!-- Quest install toast -->
+  <div id="questToast">
+    <button id="toastClose">×</button>
+    <div class="toast-title">Add to Meta Quest</div>
+    <ul class="toast-steps">
+      <li data-n="1">In the Meta Quest Browser, tap the <strong style="color:rgba(255,255,255,0.7)">⋮</strong> menu at the top right</li>
+      <li data-n="2">Select <strong style="color:rgba(255,255,255,0.7)">"Add to Library"</strong> or <strong style="color:rgba(255,255,255,0.7)">"Create Shortcut"</strong></li>
+      <li data-n="3">The BWA icon will appear in your Quest menu as an app</li>
+    </ul>
+  </div>
+
+  <script>
+    // ── CURSOR ──
+    const cursor = document.getElementById('cursor');
+    document.addEventListener('mousemove', e => {
+      cursor.style.left = e.clientX + 'px';
+      cursor.style.top  = e.clientY + 'px';
+    });
+    document.querySelectorAll('a, button').forEach(el => {
+      el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+      el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+    });
+
+    // ── FULLSCREEN ──
+    function requestFS() {
+      const el = document.documentElement;
+      if      (el.requestFullscreen)       el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else if (el.mozRequestFullScreen)    el.mozRequestFullScreen();
+    }
+
+    function exitFS() {
+      if      (document.exitFullscreen)       document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+
+    function isFS() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    // Splash button
+    document.getElementById('btnEnter').addEventListener('click', () => {
+      requestFS();
+      hideSplash();
+    });
+
+    // Tap anywhere on splash to continue without FS
+    document.getElementById('splash').addEventListener('click', e => {
+      if (e.target.id === 'btnEnter') return;
+      hideSplash();
+    });
+
+    function hideSplash() {
+      document.getElementById('splash').classList.add('hidden');
+      setTimeout(() => {
+        document.getElementById('splash').style.display = 'none';
+      }, 700);
+    }
+
+    // Fullscreen button in header
+    document.getElementById('btnFullscreen').addEventListener('click', () => {
+      isFS() ? exitFS() : requestFS();
+    });
+
+    // Update button label based on FS state
+    document.addEventListener('fullscreenchange', updateFSBtn);
+    document.addEventListener('webkitfullscreenchange', updateFSBtn);
+    function updateFSBtn() {
+      const btn = document.getElementById('btnFullscreen');
+      btn.querySelector('svg').innerHTML = isFS()
+        ? '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>'
+        : '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
+    }
+
+    // ── EXPERIENCE IFRAME ──
+    const expOverlay = document.getElementById('expOverlay');
+    const expFrame   = document.getElementById('expFrame');
+    const btnBack    = document.getElementById('btnBack');
+
+    document.querySelectorAll('[data-exp]').forEach(card => {
+      card.addEventListener('click', e => {
+        e.preventDefault();
+        expFrame.src = card.getAttribute('href') + '?v=' + Date.now();
+        expOverlay.classList.add('visible');
+        btnBack.style.display = 'flex';
+      });
+    });
+
+    btnBack.addEventListener('click', () => {
+      expOverlay.classList.remove('visible');
+      expFrame.src = '';
+    });
+
+
+    // ── QUEST TOAST ──
+    document.getElementById('btnQuest').addEventListener('click', () => {
+      document.getElementById('questToast').classList.add('visible');
+    });
+    document.getElementById('toastClose').addEventListener('click', () => {
+      document.getElementById('questToast').classList.remove('visible');
+    });
+
+    // ── AUTO-FS on Quest Browser ──
+    const ua = navigator.userAgent.toLowerCase();
+    const isQuest = ua.includes('quest') || ua.includes('oculus');
+    if (isQuest) {
+      // On Quest, attempt FS automatically after first interaction
+      document.addEventListener('pointerdown', function tryFS() {
+        requestFS();
+        document.removeEventListener('pointerdown', tryFS);
+      }, { once: true });
+    }
+  </script>
+</body>
+</html>

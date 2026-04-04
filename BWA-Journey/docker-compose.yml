@@ -1,0 +1,33 @@
+services:
+  bwa-journey:
+    build: .
+    container_name: bwa-journey
+    ports:
+      - "8082:80"
+    volumes:
+      - uploads:/usr/share/nginx/html/uploads
+    depends_on:
+      - instagram-api
+    restart: unless-stopped
+
+  instagram-api:
+    build: ./backend
+    container_name: bwa-instagram-api
+    environment:
+      - IG_ACCESS_TOKEN=${IG_ACCESS_TOKEN}
+      - IG_USER_ID=${IG_USER_ID}
+      - PUBLIC_URL=${PUBLIC_URL}
+    volumes:
+      - uploads:/uploads
+    restart: unless-stopped
+
+volumes:
+  uploads:
+
+# Access : http://localhost:8082
+# On tablet : http://<YOUR_PC_IP>:8082
+#
+# Create a .env file with your Instagram API credentials:
+#   IG_ACCESS_TOKEN=your_long_lived_access_token
+#   IG_USER_ID=your_instagram_business_account_id
+#   PUBLIC_URL=https://your-public-domain.com

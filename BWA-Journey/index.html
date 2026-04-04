@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>BWA — Journey</title>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="manifest.json">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --black: #000;
+      --white: #fff;
+      --dim:  rgba(255,255,255,0.12);
+      --dim2: rgba(255,255,255,0.06);
+      --dim3: rgba(255,255,255,0.03);
+      --accent:     #c8a96e;
+      --accent-dim: rgba(200,169,110,0.15);
+      --accent-mid: rgba(200,169,110,0.45);
+    }
+
+    *, *::before, *::after {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* hide scrollbar everywhere */
+    *::-webkit-scrollbar { display: none; }
+    * { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* noise */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.032;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .bg-glow {
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 110%, rgba(200,169,110,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 85% 15%,  rgba(255,255,255,0.02) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app {
+      position: relative;
+      z-index: 2;
+      width: 100%; height: 100%;
+    }
+
+    /* ─── SCREENS ─────────────────────────────────── */
+    .screen {
+      position: absolute; inset: 0;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(20px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+    .screen.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    .screen.leaving {
+      opacity: 0;
+      transform: translateY(-20px);
+      pointer-events: none;
+    }
+
+    /* ─── TOP BAR ─────────────────────────────────── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 36px 36px 0;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 28px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+    }
+    .logo span { color: var(--accent); }
+
+    .step-badge {
+      font-size: 17px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.28);
+    }
+    .step-badge b { color: var(--accent); font-weight: 700; }
+
+    /* ─── PROGRESS ────────────────────────────────── */
+    .progress {
+      display: flex;
+      gap: 5px;
+      padding: 22px 36px 0;
+      flex-shrink: 0;
+    }
+    .progress-seg {
+      flex: 1;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--dim2);
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-seg::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.7s ease;
+    }
+    .progress-seg.done::after  { transform: scaleX(1); }
+    .progress-seg.active::after {
+      transform: scaleX(1);
+      background: var(--accent-mid);
+    }
+
+    /* ─── DIVIDER ─────────────────────────────────── */
+    .divider {
+      margin: 22px 36px 0;
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--dim) 35%, transparent 100%);
+      flex-shrink: 0;
+    }
+
+    /* ─── STEP BODY ───────────────────────────────── */
+    .step-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 36px 36px 0;
+      position: relative;
+      min-height: 0;
+    }
+
+    .ghost-number {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 160px;
+      font-weight: 300;
+      line-height: 1;
+      color: rgba(200,169,110,0.045);
+      position: absolute;
+      top: 0; right: 24px;
+      pointer-events: none;
+      user-select: none;
+      letter-spacing: -0.02em;
+    }
+
+    .step-icon {
+      width: 52px; height: 52px;
+      margin-bottom: 22px;
+      flex-shrink: 0;
+      display: block;
+    }
+
+    .step-label {
+      font-size: 17px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .step-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(54px, 10vw, 86px);
+      line-height: 1.04;
+      margin-bottom: 28px;
+      letter-spacing: -0.01em;
+    }
+    .step-title em {
+      font-style: italic;
+      color: rgba(255,255,255,0.38);
+    }
+
+    .step-desc {
+      font-size: 20px;
+      line-height: 1.75;
+      color: rgba(255,255,255,0.5);
+      max-width: 600px;
+      margin-bottom: 36px;
+    }
+
+    .step-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-bottom: 36px;
+    }
+    .step-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      font-size: 22px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.6);
+    }
+    .step-list .num {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--dim);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+
+    /* secondary action (open experiences / open app) */
+    .btn-secondary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 28px;
+      border: 1px solid var(--dim);
+      border-radius: 4px;
+      background: var(--dim3);
+      color: rgba(255,255,255,0.7);
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      transition: border-color 0.3s, color 0.3s, background 0.3s;
+      margin-bottom: 12px;
+      touch-action: manipulation;
+    }
+    .btn-secondary:active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .btn-secondary .arrow { font-size: 20px; opacity: 0.5; }
+    .btn-secondary .exp-sub {
+      font-size: 17px;
+      font-weight: 400;
+      letter-spacing: 0.05em;
+      color: rgba(255,255,255,0.3);
+      margin-top: 3px;
+      text-transform: none;
+    }
+    .btn-secondary .exp-left { display: flex; flex-direction: column; }
+
+    /* ─── FINISHED BUTTON ─────────────────────────── */
+    .btn-back {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 22px;
+      height: auto;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 100px;
+      background: transparent;
+      color: rgba(255,255,255,0.6);
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: border-color 0.3s, color 0.3s;
+    }
+    .btn-back:active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .btn-finished-wrap {
+      padding: 16px 36px 36px;
+      flex-shrink: 0;
+    }
+
+    .btn-finished {
+      width: 100%;
+      padding: 26px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--accent);
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      touch-action: manipulation;
+      position: relative;
+      overflow: hidden;
+      transition: color 0.35s ease;
+    }
+    .btn-finished::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: var(--accent);
+      transform: translateX(-101%);
+      transition: transform 0.35s ease;
+    }
+    .btn-finished:active::before { transform: translateX(0); }
+    .btn-finished:active { color: var(--black); }
+    .btn-finished span, .btn-finished .f-arrow {
+      position: relative; z-index: 1;
+    }
+    .btn-finished .f-arrow { font-size: 26px; }
+
+    /* ─── WELCOME ─────────────────────────────────── */
+    #s0 .top-bar { padding-bottom: 0; }
+
+    .welcome-body {
+      flex: 1;
+      padding: 40px 36px 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .welcome-eyebrow {
+      font-size: 17px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    .welcome-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(60px, 13vw, 100px);
+      line-height: 0.98;
+      letter-spacing: -0.01em;
+      margin-bottom: 28px;
+    }
+    .welcome-title em {
+      font-style: italic;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .welcome-sub {
+      font-size: 20px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.42);
+      max-width: 520px;
+      margin-bottom: 40px;
+    }
+
+    .journey-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 40px;
+    }
+    .journey-item {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 22px 0;
+      border-bottom: 1px solid var(--dim2);
+    }
+    .journey-item:last-child { border-bottom: none; }
+    .j-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 38px;
+      font-weight: 300;
+      color: var(--accent);
+      opacity: 0.55;
+      width: 30px;
+      flex-shrink: 0;
+    }
+    .j-name {
+      font-size: 21px;
+      letter-spacing: 0.06em;
+      color: rgba(255,255,255,0.45);
+    }
+    .j-name strong {
+      font-weight: 700;
+      color: rgba(255,255,255,0.75);
+      letter-spacing: 0.04em;
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .btn-begin-wrap {
+      padding: 0 36px 36px;
+      flex-shrink: 0;
+    }
+    .btn-begin {
+      width: 100%;
+      padding: 26px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      background: var(--accent);
+      color: var(--black);
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.3s, color 0.3s;
+    }
+    .btn-begin:active {
+      background: transparent;
+      color: var(--accent);
+    }
+    .btn-begin .b-arrow { font-size: 26px; }
+
+    .admin-footer {
+      padding: 0 36px 16px;
+      text-align: right;
+    }
+    .admin-link {
+      font-size: 10px;
+      color: rgba(255,255,255,0.08);
+      text-decoration: none;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    /* ─── DONE SCREEN ─────────────────────────────── */
+    .done-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 36px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      min-height: 0;
+    }
+
+    .done-ring {
+      width: 72px; height: 72px;
+      border: 1px solid var(--accent-mid);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 36px;
+    }
+    .done-ring svg { width: 28px; height: 28px; }
+
+    .done-label {
+      font-size: 17px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+
+    .done-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(48px, 9vw, 72px);
+      line-height: 1.05;
+      margin-bottom: 28px;
+    }
+
+    .done-desc {
+      font-size: 20px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.42);
+      max-width: 420px;
+      margin-bottom: 40px;
+    }
+
+    /* ─── FIND US ────────────────────────────────── */
+    .find-us {
+      margin-bottom: 40px;
+      text-align: center;
+    }
+    .find-us-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    .find-us-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      color: rgba(255,255,255,0.45);
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      letter-spacing: 0.05em;
+    }
+    .find-us-row svg {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .btn-restart {
+      padding: 20px 44px;
+      border: 1px solid var(--dim);
+      border-radius: 100px;
+      background: transparent;
+      color: rgba(255,255,255,0.35);
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: border-color 0.3s, color 0.3s;
+    }
+    .btn-restart:active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ─── EXP CARDS ──────────────────────────────── */
+    .exp-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--dim2);
+      border: 1px solid var(--dim2);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 0;
+    }
+
+    .exp-card {
+      position: relative;
+      background: var(--black);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 36px 32px 40px;
+      overflow: hidden;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.4s ease;
+      min-height: 260px;
+      user-select: none;
+    }
+
+    .exp-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 30% 80%, var(--accent-dim), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    .exp-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .exp-card:active { background: rgba(255,255,255,0.025); }
+    .exp-card:active::before { opacity: 1; }
+    .exp-card:active::after  { transform: scaleX(1); }
+
+    .exp-card-num {
+      position: absolute;
+      top: 16px; right: 20px;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 88px;
+      font-weight: 300;
+      line-height: 1;
+      color: rgba(255,255,255,0.04);
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .exp-card-icon {
+      width: 52px; height: 52px;
+      margin-bottom: 24px;
+      opacity: 0.75;
+      flex-shrink: 0;
+      position: relative; z-index: 1;
+    }
+
+    .exp-card-label {
+      font-size: 20px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+      position: relative; z-index: 1;
+    }
+
+    .exp-card-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(36px, 5vw, 52px);
+      line-height: 1.08;
+      margin-bottom: 20px;
+      position: relative; z-index: 1;
+    }
+
+    .exp-card-desc {
+      font-size: 18px;
+      line-height: 1.65;
+      color: rgba(255,255,255,0.38);
+      margin-bottom: 20px;
+      position: relative; z-index: 1;
+    }
+
+    .exp-card-arrow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.28);
+      transition: color 0.3s, gap 0.3s;
+      position: relative; z-index: 1;
+    }
+    .exp-card-arrow::after { content: '→'; font-size: 22px; }
+    .exp-card:active .exp-card-arrow { color: var(--accent); gap: 14px; }
+
+    /* ─── EXP OVERLAY ─────────────────────────────── */
+    #expOverlay {
+      position: fixed; inset: 0;
+      z-index: 800;
+      background: var(--black);
+      display: none;
+      flex-direction: column;
+    }
+    #expOverlay.visible { display: flex; }
+
+    #btnBack {
+      position: absolute;
+      top: 18px; left: 18px;
+      z-index: 801;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 30px;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 100px;
+      background: rgba(0,0,0,0.75);
+      color: rgba(255,255,255,0.7);
+      font-family: 'Syne', sans-serif;
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      touch-action: manipulation;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: border-color 0.3s, color 0.3s;
+    }
+    #btnBack:active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    #btnBack svg { width: 16px; height: 16px; }
+
+    #expFrame {
+      flex: 1;
+      width: 100%;
+      border: none;
+    }
+
+    /* ─── FULLSCREEN HINT ────────────────────────────── */
+    .fullscreen-hint {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 900;
+      padding: 14px 24px;
+      background: rgba(200,169,110,0.15);
+      border-top: 1px solid var(--accent-mid);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      text-align: center;
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .fullscreen-hint.visible {
+      opacity: 1;
+    }
+
+    /* ─── WELCOME ANIM ────────────────────────────── */
+    #s0.active .welcome-eyebrow { animation: slideUp 0.65s ease 0.25s both; }
+    #s0.active .welcome-title   { animation: slideUp 0.65s ease 0.42s both; }
+    #s0.active .welcome-sub     { animation: slideUp 0.65s ease 0.56s both; }
+    #s0.active .journey-list    { animation: slideUp 0.65s ease 0.68s both; }
+    #s0.active .btn-begin-wrap  { animation: slideUp 0.65s ease 0.80s both; }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    /* ─── LANDSCAPE MODE ─────────────────────────── */
+    @media (orientation: landscape) {
+      .ghost-number { display: none; }
+      .step-icon { display: none; }
+
+      /* Screen 2 — cards: allow scroll in landscape */
+      #s2 .step-body {
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 16px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      #s2 .step-title { font-size: clamp(28px,5vw,42px) !important; margin-bottom: 6px !important; }
+      #s2 .step-desc  { font-size: 16px !important; margin-bottom: 12px !important; }
+      .exp-cards {
+        flex-shrink: 0;
+      }
+      .exp-card {
+        min-height: 180px;
+        justify-content: center;
+        padding: 24px 24px 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+<div class="fullscreen-hint" id="fsHint">Tap anywhere on the screen to go fullscreen</div>
+
+<div id="app">
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 0 — WELCOME
+  ══════════════════════════════════════════════════ -->
+  <div class="screen active" id="s0">
+    <div class="top-bar">
+      <div class="logo">BW<span>A</span> — Journey</div>
+    </div>
+
+    <div class="welcome-body">
+      <div class="welcome-eyebrow">Your experience today</div>
+      <div class="welcome-title">Four steps<br><em>to explore</em></div>
+      <div class="welcome-sub">
+        Follow this guide through each phase of your visit.
+        Take your time — each step is a different way to encounter the experience.
+      </div>
+
+      <ul class="journey-list">
+        <li class="journey-item">
+          <div class="j-num">1</div>
+          <div class="j-name">
+            <strong>Explore the Space</strong>
+            Walk the room — observe, discover, experiment
+          </div>
+        </li>
+        <li class="journey-item">
+          <div class="j-num">2</div>
+          <div class="j-name">
+            <strong>Digital Experiences</strong>
+            Two interactive experiences on your tablet
+          </div>
+        </li>
+        <li class="journey-item">
+          <div class="j-num">3</div>
+          <div class="j-name">
+            <strong>Virtual Reality</strong>
+            Put on a headset when you're ready
+          </div>
+        </li>
+        <li class="journey-item">
+          <div class="j-num">4</div>
+          <div class="j-name">
+            <strong>Final Experience</strong>
+            Experience a new way to see the painting
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="btn-begin-wrap">
+      <button class="btn-begin" onclick="goTo(1)">
+        <span>Begin your journey</span>
+        <span class="b-arrow">→</span>
+      </button>
+    </div>
+
+    <div class="admin-footer">
+      <a class="admin-link" href="guide.html">Staff guide</a>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 1 — EXPLORE THE SPACE
+  ══════════════════════════════════════════════════ -->
+  <div class="screen" id="s1">
+    <div class="top-bar">
+      <button class="btn-back" onclick="goTo(0)" aria-label="Back">← Back</button>
+      <div class="logo">BW<span>A</span></div>
+      <div class="step-badge">Step <b>1</b> / 4</div>
+    </div>
+
+    <div class="progress">
+      <div class="progress-seg active" id="p1"></div>
+      <div class="progress-seg"        id="p2"></div>
+      <div class="progress-seg"        id="p3"></div>
+      <div class="progress-seg"        id="p4"></div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="step-body">
+      <div class="ghost-number">1</div>
+
+      <!-- icon: compass / footstep -->
+      <svg class="step-icon" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="26" cy="26" r="20" stroke="white" stroke-width="1" opacity="0.2"/>
+        <circle cx="26" cy="26" r="1.5" fill="#c8a96e" opacity="0.9"/>
+        <path d="M26 6 L28.5 20 L26 18 L23.5 20 Z" fill="#c8a96e" opacity="0.8"/>
+        <path d="M46 26 L32 28.5 L34 26 L32 23.5 Z" fill="white" opacity="0.4"/>
+        <path d="M26 46 L23.5 32 L26 34 L28.5 32 Z" fill="white" opacity="0.4"/>
+        <path d="M6 26 L20 23.5 L18 26 L20 28.5 Z" fill="white" opacity="0.4"/>
+      </svg>
+
+      <div class="step-label">Step 01 — Explore</div>
+      <div class="step-title">Explore<br><em>the space</em></div>
+      <div class="step-desc">
+        Before anything else, take time to simply be in the room.
+        Move freely, observe at your own pace — there is no right order.
+      </div>
+
+      <ul class="step-list">
+        <li>
+          <div class="num">1</div>
+          <span>Walk through the entire room without rushing. Let your eye follow what draws you.</span>
+        </li>
+        <li>
+          <div class="num">2</div>
+          <span>Observe each work from multiple distances — up close, then from across the room.</span>
+        </li>
+        <li>
+          <div class="num">3</div>
+          <span>Notice how light, scale, and placement shape your perception.</span>
+        </li>
+        <li>
+          <div class="num">4</div>
+          <span>Try every interactive element you can find in the space.</span>
+        </li>
+        <li>
+          <div class="num">5</div>
+          <span>When you feel ready, tap <em>Finished</em> to move on.</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="btn-finished-wrap">
+      <button class="btn-finished" onclick="goTo(2)">
+        <span>Finished — next step</span>
+        <span class="f-arrow">→</span>
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 2 — DIGITAL EXPERIENCES
+  ══════════════════════════════════════════════════ -->
+  <div class="screen" id="s2">
+    <div class="top-bar">
+      <button class="btn-back" onclick="goTo(1)" aria-label="Back">← Back</button>
+      <div class="logo">BW<span>A</span></div>
+      <div class="step-badge">Step <b>2</b> / 4</div>
+    </div>
+
+    <div class="progress">
+      <div class="progress-seg done"   id="p1b"></div>
+      <div class="progress-seg active" id="p2b"></div>
+      <div class="progress-seg"        id="p3b"></div>
+      <div class="progress-seg"        id="p4b"></div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="step-body" style="display:flex;flex-direction:column;">
+      <div class="step-label" style="margin-bottom:6px;">Step 02 — Digital</div>
+      <div class="step-title" style="font-size:clamp(40px,7vw,62px);margin-bottom:10px;">Digital<br><em>experiences</em></div>
+      <div class="step-desc" style="font-size:20px;margin-bottom:20px;">
+        Choose an experience below. When you've tried both, tap <em>Finished</em> to continue.
+      </div>
+
+      <div class="exp-cards">
+
+        <!-- Card 1 — Filters -->
+        <div class="exp-card" onclick="openExp('filters/index.html')">
+          <div class="exp-card-num">01</div>
+          <svg class="exp-card-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="6" y="6" width="36" height="36" rx="2" stroke="white" stroke-width="1" opacity="0.3"/>
+            <line x1="24" y1="6" x2="18" y2="42" stroke="white" stroke-width="1.2" opacity="0.7" stroke-linecap="round"/>
+            <line x1="6" y1="22" x2="42" y2="28" stroke="#c8a96e" stroke-width="1" opacity="0.8" stroke-linecap="round"/>
+            <rect x="6" y="6" width="13" height="16" fill="white" opacity="0.06"/>
+            <rect x="26" y="28" width="16" height="14" fill="#c8a96e" opacity="0.08"/>
+          </svg>
+          <div class="exp-card-label">Experience 01</div>
+          <div class="exp-card-title">Create your<br>own art</div>
+          <div class="exp-card-arrow">Explore</div>
+        </div>
+
+        <!-- Card 2 — Puzzle -->
+        <div class="exp-card" onclick="openExp('puzzle/puzzle.html')">
+          <div class="exp-card-num">02</div>
+          <svg class="exp-card-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="6" y="6" width="15" height="15" rx="1.5" stroke="white" stroke-width="1" opacity="0.5"/>
+            <rect x="27" y="6" width="15" height="15" rx="1.5" stroke="white" stroke-width="1" opacity="0.5"/>
+            <rect x="6" y="27" width="15" height="15" rx="1.5" stroke="white" stroke-width="1" opacity="0.5"/>
+            <rect x="27" y="27" width="15" height="15" rx="1.5" stroke="#c8a96e" stroke-width="1.2" opacity="0.9" fill="rgba(200,169,110,0.06)"/>
+            <line x1="22" y1="14" x2="26" y2="14" stroke="white" stroke-width="1" opacity="0.3"/>
+            <line x1="14" y1="22" x2="14" y2="26" stroke="white" stroke-width="1" opacity="0.3"/>
+          </svg>
+          <div class="exp-card-label">Experience 02</div>
+          <div class="exp-card-title">Recreate<br>the painting</div>
+          <div class="exp-card-arrow">Explore</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="btn-finished-wrap">
+      <button class="btn-finished" onclick="goTo(3)">
+        <span>Finished — next step</span>
+        <span class="f-arrow">→</span>
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 3 — VIRTUAL REALITY
+  ══════════════════════════════════════════════════ -->
+  <div class="screen" id="s3">
+    <div class="top-bar">
+      <button class="btn-back" onclick="goTo(2)" aria-label="Back">← Back</button>
+      <div class="logo">BW<span>A</span></div>
+      <div class="step-badge">Step <b>3</b> / 4</div>
+    </div>
+
+    <div class="progress">
+      <div class="progress-seg done"   id="p1c"></div>
+      <div class="progress-seg done"   id="p2c"></div>
+      <div class="progress-seg active" id="p3c"></div>
+      <div class="progress-seg"        id="p4c"></div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="step-body">
+      <div class="ghost-number">3</div>
+
+      <!-- icon: VR headset -->
+      <svg class="step-icon" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="6" y="18" width="40" height="18" rx="5" stroke="white" stroke-width="1" opacity="0.3"/>
+        <rect x="11" y="22" width="11" height="10" rx="3" stroke="#c8a96e" stroke-width="1.2" opacity="0.9"/>
+        <rect x="30" y="22" width="11" height="10" rx="3" stroke="#c8a96e" stroke-width="1.2" opacity="0.9"/>
+        <line x1="22" y1="27" x2="30" y2="27" stroke="white" stroke-width="1" opacity="0.3"/>
+        <path d="M6 24 L2 22 M46 24 L50 22" stroke="white" stroke-width="1" stroke-linecap="round" opacity="0.25"/>
+      </svg>
+
+      <div class="step-label">Step 03 — VR</div>
+      <div class="step-title">Virtual<br><em>reality</em></div>
+      <div class="step-desc">
+        When you're ready, pick up one of the VR headsets available in the room.
+        A member of staff is here to help you if needed.
+      </div>
+
+      <ul class="step-list">
+        <li>
+          <div class="num">1</div>
+          <span>Pick up a headset from the designated area and put it on.</span>
+        </li>
+        <li>
+          <div class="num">2</div>
+          <span>Confirm the user selection by aiming at it, and press the Volume + button.</span>
+        </li>
+        <li>
+          <div class="num">3</div>
+          <span>You can look around freely. Take your time inside the experience.</span>
+        </li>
+        <li>
+          <div class="num">4</div>
+          <span>When finished, remove the headset and place it back carefully.</span>
+        </li>
+        <li>
+          <div class="num">5</div>
+          <span>Return to this tablet and tap <em>Finished</em> to continue.</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="btn-finished-wrap">
+      <button class="btn-finished" onclick="goTo(4)">
+        <span>Finished — next step</span>
+        <span class="f-arrow">→</span>
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 4 — FINAL APP
+  ══════════════════════════════════════════════════ -->
+  <div class="screen" id="s4">
+    <div class="top-bar">
+      <button class="btn-back" onclick="goTo(3)" aria-label="Back">← Back</button>
+      <div class="logo">BW<span>A</span></div>
+      <div class="step-badge">Step <b>4</b> / 4</div>
+    </div>
+
+    <div class="progress">
+      <div class="progress-seg done"   id="p1d"></div>
+      <div class="progress-seg done"   id="p2d"></div>
+      <div class="progress-seg done"   id="p3d"></div>
+      <div class="progress-seg active" id="p4d"></div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="step-body">
+      <div class="ghost-number">4</div>
+
+      <!-- icon: launch / app -->
+      <svg class="step-icon" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="14" y="8" width="24" height="36" rx="4" stroke="white" stroke-width="1" opacity="0.25"/>
+        <rect x="20" y="12" width="12" height="8" rx="1.5" fill="white" opacity="0.05" stroke="white" stroke-width="0.8" opacity="0.2"/>
+        <circle cx="26" cy="38" r="1.5" fill="white" opacity="0.35"/>
+        <path d="M22 26 L26 22 L30 26 M26 22 L26 32" stroke="#c8a96e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+      </svg>
+
+      <div class="step-label">Step 04 — App</div>
+      <div class="step-title">Open<br><em>the app</em></div>
+      <div class="step-desc">
+        Head to the top floor to discover the paintings.
+        You can open the Artivive app and point your phone at the artworks to reveal hidden layers, or simply enjoy them as a classic exhibition — take your time and let each piece speak for itself.
+      </div>
+
+      <ul class="step-list">
+        <li>
+          <div class="num">1</div>
+          <span>Go up to the top floor where the paintings are displayed.</span>
+        </li>
+        <li>
+          <div class="num">2</div>
+          <span>Open the Artivive app and point your camera at the artworks to see them come alive — or simply admire them as they are.</span>
+        </li>
+        <li>
+          <div class="num">3</div>
+          <span>When you're done, come back here and tap <em>Finished</em>.</span>
+        </li>
+      </ul>
+
+      <div class="btn-secondary" style="cursor:default;">
+        <div class="exp-left">
+          <span>Artivive</span>
+          <span class="exp-sub">Open the app from the home screen to reveal hidden layers</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-finished-wrap">
+      <button class="btn-finished" onclick="goTo(5)">
+        <span>Finished — complete journey</span>
+        <span class="f-arrow">→</span>
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════
+       SCREEN 5 — DONE
+  ══════════════════════════════════════════════════ -->
+  <div class="screen" id="s5">
+    <div class="top-bar">
+      <div class="logo">BW<span>A</span> — Journey</div>
+    </div>
+
+    <div class="done-body">
+      <div class="done-ring">
+        <svg viewBox="0 0 28 28" fill="none" stroke="#c8a96e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="5,14 11,20 23,8"/>
+        </svg>
+      </div>
+
+      <div class="done-label">Journey complete</div>
+      <div class="done-title">Thank you<br>for visiting</div>
+      <div class="done-desc">
+        You have experienced the full journey — the space,
+        the digital works, virtual reality, and the paintings.
+        We hope it stays with you.
+      </div>
+
+      <!-- FIND US -->
+      <div class="find-us">
+        <div class="find-us-label">Find us</div>
+        <!-- Instagram -->
+        <div class="find-us-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="5"/>
+            <circle cx="12" cy="12" r="5"/>
+            <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>@blendingwitharts</span>
+        </div>
+        <!-- Email -->
+        <div class="find-us-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="3"/>
+            <path d="M2 7l10 7 10-7"/>
+          </svg>
+          <span>info@blendingwitharts.org</span>
+        </div>
+        <!-- Website -->
+        <div class="find-us-row">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/>
+          </svg>
+          <span>www.blendingwitharts.org</span>
+        </div>
+      </div>
+
+      <button class="btn-restart" onclick="restart()">Start over</button>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- ══════════════════════════════════════════════
+     EXPERIENCE OVERLAY (iframe)
+══════════════════════════════════════════════════ -->
+<div id="expOverlay">
+  <button id="btnBack" onclick="closeExp()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5M12 5l-7 7 7 7"/>
+    </svg>
+    Back to journey
+  </button>
+  <iframe id="expFrame" src="" allowfullscreen></iframe>
+</div>
+
+
+<script>
+  // ── CONFIG ─────────────────────────────────────────────
+
+
+  // ── NAVIGATION ─────────────────────────────────────────
+  let current = 0;
+  const total  = 6; // screens 0–5
+
+  function goTo(index) {
+    const from = document.getElementById('s' + current);
+    const to   = document.getElementById('s' + index);
+    if (!from || !to) return;
+
+    from.classList.add('leaving');
+    setTimeout(() => {
+      from.classList.remove('active', 'leaving');
+    }, 460);
+
+    setTimeout(() => {
+      to.classList.add('active');
+      current = index;
+    }, 60);
+  }
+
+  function restart() {
+    const current_el = document.getElementById('s' + current);
+    current_el.classList.remove('active');
+    const s0 = document.getElementById('s0');
+    s0.classList.add('active');
+    current = 0;
+  }
+
+  // ── EXPERIENCE OVERLAY ────────────────────────────────
+  function openExp(url) {
+    const overlay = document.getElementById('expOverlay');
+    const frame   = document.getElementById('expFrame');
+    frame.src = url + '?v=' + Date.now();
+    overlay.classList.add('visible');
+    // Request fullscreen for immersion
+    if (overlay.requestFullscreen)            overlay.requestFullscreen().catch(()=>{});
+    else if (overlay.webkitRequestFullscreen) overlay.webkitRequestFullscreen();
+  }
+
+  function closeExp() {
+    const overlay = document.getElementById('expOverlay');
+    const frame   = document.getElementById('expFrame');
+    overlay.classList.remove('visible');
+    frame.src = '';
+    // Exit fullscreen
+    if (document.exitFullscreen)            document.exitFullscreen().catch(()=>{});
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+
+
+  // ── FULLSCREEN ─────────────────────────────────────────
+  const fsHint = document.getElementById('fsHint');
+
+  function updateFsHint() {
+    const isFS = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!isFS) {
+      fsHint.classList.add('visible');
+    } else {
+      fsHint.classList.remove('visible');
+    }
+  }
+
+  function tryFullscreen() {
+    const el = document.documentElement;
+    const isFS = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!isFS) {
+      if (el.requestFullscreen)            el.requestFullscreen().catch(()=>{});
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    }
+  }
+
+  // On every tap/click, ensure we're fullscreen
+  document.addEventListener('pointerdown', tryFullscreen);
+
+  // Track fullscreen changes to show/hide hint
+  document.addEventListener('fullscreenchange', updateFsHint);
+  document.addEventListener('webkitfullscreenchange', updateFsHint);
+
+  // When user returns to the tab/app, re-enter fullscreen on next touch
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      tryFullscreen();
+      updateFsHint();
+    }
+  });
+  window.addEventListener('focus', tryFullscreen);
+
+  // Initial check
+  updateFsHint();
+</script>
+
+</body>
+</html>

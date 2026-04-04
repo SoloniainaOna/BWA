@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Divided Filters</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #container {
+      position: relative;
+      width: 100%; height: 100%;
+    }
+    #overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 2;
+    }
+    .toolbar {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+      display: flex;
+      gap: 10px;
+    }
+    .toolbar button {
+      padding: 12px 20px;
+      border: 2px solid rgba(255,255,255,0.5);
+      border-radius: 25px;
+      background: rgba(0,0,0,0.45);
+      color: #fff;
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.2s;
+    }
+    .toolbar button:active {
+      transform: scale(0.93);
+      background: rgba(255,255,255,0.15);
+    }
+    #filterLabel {
+      position: absolute;
+      z-index: 10;
+      padding: 8px 18px;
+      background: rgba(0,0,0,0.65);
+      color: #fff;
+      border-radius: 18px;
+      font-size: 15px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transform: translate(-50%, -120%);
+      white-space: nowrap;
+    }
+    #filterLabel.visible { opacity: 1; }
+    /* ========== GALLERY VIEW ========== */
+    #galleryView {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      z-index: 100;
+      background: #000;
+      transition: opacity 0.4s ease;
+    }
+    #galleryTitle {
+      color: rgba(255,255,255,0.5);
+      font-size: 15px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    #galleryGrid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    .thumb {
+      width: 28vw;
+      height: 28vh;
+      object-fit: cover;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.5s ease, opacity 0.5s ease, border-color 0.3s ease;
+    }
+    .thumb:active, .thumb:hover {
+      border-color: rgba(255,255,255,0.8);
+      transform: scale(1.03);
+    }
+    #container {
+      transition: opacity 0.4s ease;
+    }
+    #btnBack {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      padding: 12px 20px;
+      border: 2px solid rgba(255,255,255,0.5);
+      border-radius: 25px;
+      background: rgba(0,0,0,0.45);
+      color: #fff;
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.2s;
+      display: none;
+    }
+    #btnBack:active {
+      transform: scale(0.93);
+      background: rgba(255,255,255,0.15);
+    }
+
+    #instructions {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      padding: 10px 22px;
+      background: rgba(0,0,0,0.45);
+      color: rgba(255,255,255,0.7);
+      border-radius: 20px;
+      font-size: 13px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      pointer-events: none;
+      text-align: center;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: opacity 2s;
+    }
+
+    /* ========== INSTAGRAM MODAL ========== */
+    #instagramModal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 200;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      justify-content: center;
+      align-items: center;
+    }
+    #instagramModal.visible { display: flex; }
+    #instagramModalBox {
+      background: rgba(20,20,20,0.95);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 32px 28px;
+      width: min(90vw, 360px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #instagramModalTitle {
+      color: #fff;
+      font-size: 17px;
+      font-weight: 600;
+      text-align: center;
+    }
+    #instagramModalSub {
+      color: rgba(255,255,255,0.55);
+      font-size: 13px;
+      text-align: center;
+      line-height: 1.4;
+    }
+    #instagramInput {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 16px;
+      padding: 12px 16px;
+      outline: none;
+      width: 100%;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+    #instagramInput::placeholder { color: rgba(255,255,255,0.3); }
+    #instagramInput:focus { border-color: rgba(255,255,255,0.6); }
+    .modalBtns {
+      display: flex;
+      gap: 10px;
+    }
+    .modalBtns button {
+      flex: 1;
+      padding: 13px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.2s;
+    }
+    .modalBtns button:active { opacity: 0.7; }
+    #btnInstagramCancel {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+    #btnInstagramConfirm {
+      background: #fff;
+      color: #000;
+    }
+    #btnInstagramConfirm:disabled {
+      opacity: 0.5;
+    }
+
+    /* ========== TOAST NOTIFICATION ========== */
+    #toast {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      z-index: 300;
+      background: rgba(20,20,20,0.92);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      padding: 14px 24px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.35s, transform 0.35s;
+      text-align: center;
+      max-width: 85vw;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div id="galleryView">
+    <div id="galleryTitle">Choose a video</div>
+    <div id="galleryGrid">
+      <video class="thumb" data-src="/videos/2KH.mov" src="/videos/2KH.mov" muted loop autoplay playsinline></video>
+      <video class="thumb" data-src="/videos/2KF.mov" src="/videos/2KF.mov" muted loop autoplay playsinline></video>
+      <video class="thumb" data-src="/videos/test.mov" src="/videos/test.mov" muted loop autoplay playsinline></video>
+      <video class="thumb" data-src="/videos/test4.mov" src="/videos/test4.mov" muted loop autoplay playsinline></video>
+    </div>
+  </div>
+
+  <button id="btnBack">&#8592; Back</button>
+
+  <div id="container" style="display:none">
+    <canvas id="overlay"></canvas>
+    <div id="filterLabel"></div>
+    <div class="toolbar">
+      <button id="btnUndo">&#8617; Cancel</button>
+      <button id="btnClear">&#10005; Reset Filters</button>
+    </div>
+    <div id="instructions">Slide to divide &middot; Double-tap to change the filter</div>
+  </div>
+
+  <video id="video" loop muted playsinline webkit-playsinline style="display:none;"></video>
+
+  <!-- Instagram modal -->
+  <div id="instagramModal">
+    <div id="instagramModalBox">
+      <div id="instagramModalTitle">Post to our story</div>
+      <div id="instagramModalSub">Enter your Instagram handle.<br>Your photo will be posted to our story and you'll be tagged.</div>
+      <input id="instagramInput" type="text" placeholder="@yourhandle" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <div class="modalBtns">
+        <button id="btnInstagramCancel">Cancel</button>
+        <button id="btnInstagramConfirm">Post</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.js"></script>
+  <script>
+    // ===================== CONFIG =====================
+    const FILTER_NAMES = ['Normal','Black & White','Pink','Sepia','Negative','Cold','Contrast','Vintage'];
+    const NUM_FILTERS = FILTER_NAMES.length;
+    const OVERLAY_LINE_W = 3;
+    const MAP_LINE_W = 6;
+    const DOUBLE_TAP_MS = 350;
+    const DOUBLE_TAP_PX = 40;
+    const TAP_MAX_MS = 280;
+    const TAP_MAX_PX = 15;
+    const MIN_DRAW_PX = 8;
+
+    // ===================== STATE =====================
+    let lines = [];
+    let currentLine = null;
+    let isDrawing = false;
+    let wasDrag = false;
+    let ptrStartX = 0, ptrStartY = 0, ptrStartT = 0;
+    let lastTapT = 0, lastTapX = 0, lastTapY = 0;
+    let regionMap = null;
+    let regionFilters = {};
+    let W = window.innerWidth;
+    let H = window.innerHeight;
+    let mapW = Math.ceil(W / 2);
+    let mapH = Math.ceil(H / 2);
+
+    // ===================== DOM =====================
+    const container = document.getElementById('container');
+    const overlayEl = document.getElementById('overlay');
+    const ctx = overlayEl.getContext('2d');
+    const filterLabel = document.getElementById('filterLabel');
+    const instructions = document.getElementById('instructions');
+    const video = document.getElementById('video');
+
+    function sizeOverlay() {
+      const dpr = window.devicePixelRatio || 1;
+      overlayEl.width = W * dpr;
+      overlayEl.height = H * dpr;
+      overlayEl.style.width = W + 'px';
+      overlayEl.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    sizeOverlay();
+
+    // ===================== OFFSCREEN CANVASES =====================
+    const boundaryCanvas = document.createElement('canvas');
+    boundaryCanvas.width = mapW;
+    boundaryCanvas.height = mapH;
+    const bCtx = boundaryCanvas.getContext('2d', { willReadFrequently: true });
+
+    const fmapCanvas = document.createElement('canvas');
+    fmapCanvas.width = mapW;
+    fmapCanvas.height = mapH;
+    const fmapCtx = fmapCanvas.getContext('2d', { willReadFrequently: true });
+
+    regionMap = new Uint8Array(mapW * mapH);
+
+    // ===================== THREE.JS =====================
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+    renderer.setSize(W, H);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0';
+    renderer.domElement.style.left = '0';
+    container.insertBefore(renderer.domElement, container.firstChild);
+
+    const videoTexture = new THREE.VideoTexture(video);
+    videoTexture.minFilter = THREE.LinearFilter;
+    videoTexture.magFilter = THREE.LinearFilter;
+    videoTexture.format = THREE.RGBFormat;
+    videoTexture.generateMipmaps = false;
+
+    const filterMapTexture = new THREE.CanvasTexture(fmapCanvas);
+    filterMapTexture.minFilter = THREE.NearestFilter;
+    filterMapTexture.magFilter = THREE.NearestFilter;
+    filterMapTexture.generateMipmaps = false;
+
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        uVideo: { value: videoTexture },
+        uFilterMap: { value: filterMapTexture }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        precision highp float;
+        uniform sampler2D uVideo;
+        uniform sampler2D uFilterMap;
+        varying vec2 vUv;
+
+        void main() {
+          vec3 c = texture2D(uVideo, vUv).rgb;
+          float ft = floor(texture2D(uFilterMap, vUv).r * 255.0 + 0.5);
+
+          if (ft < 0.5) {
+            // 0 Normal
+          } else if (ft < 1.5) {
+            // 1 Noir & Blanc
+            float g = dot(c, vec3(0.299, 0.587, 0.114));
+            c = vec3(g);
+          } else if (ft < 2.5) {
+            // 2 Rose
+            c = vec3(
+              min(1.0, c.r * 1.12 + 0.1),
+              c.g * 0.82 + 0.02,
+              min(1.0, c.b * 0.93 + 0.08)
+            );
+          } else if (ft < 3.5) {
+            // 3 Sepia
+            c = vec3(
+              min(1.0, dot(c, vec3(0.393, 0.769, 0.189))),
+              min(1.0, dot(c, vec3(0.349, 0.686, 0.168))),
+              min(1.0, dot(c, vec3(0.272, 0.534, 0.131)))
+            );
+          } else if (ft < 4.5) {
+            // 4 Negatif
+            c = 1.0 - c;
+          } else if (ft < 5.5) {
+            // 5 Froid
+            c = vec3(
+              c.r * 0.82,
+              c.g * 0.92 + 0.02,
+              min(1.0, c.b * 1.18 + 0.1)
+            );
+          } else if (ft < 6.5) {
+            // 6 Contraste
+            c = clamp((c - 0.5) * 1.7 + 0.5, 0.0, 1.0);
+          } else if (ft < 7.5) {
+            // 7 Vintage
+            float g = dot(c, vec3(0.299, 0.587, 0.114));
+            vec3 s = vec3(g * 1.2, g, g * 0.8);
+            c = mix(c, s, 0.38);
+            c = clamp(c * vec3(1.06, 0.98, 0.86) + vec3(0.02, 0.01, -0.02), 0.0, 1.0);
+          }
+
+          gl_FragColor = vec4(c, 1.0);
+        }
+      `
+    });
+
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+    scene.add(plane);
+
+    // ===================== REGION MANAGEMENT =====================
+    function initRegions() {
+      regionMap.fill(1);
+      regionFilters = { 1: 0 };
+      updateFilterMapTexture();
+    }
+
+    function updateFilterMapTexture() {
+      const img = fmapCtx.createImageData(mapW, mapH);
+      const d = img.data;
+      for (let i = 0; i < mapW * mapH; i++) {
+        d[i * 4] = regionFilters[regionMap[i]] || 0;
+        d[i * 4 + 1] = 0;
+        d[i * 4 + 2] = 0;
+        d[i * 4 + 3] = 255;
+      }
+      fmapCtx.putImageData(img, 0, 0);
+      filterMapTexture.needsUpdate = true;
+    }
+
+    function computeRegions() {
+      const oldMap = new Uint8Array(regionMap);
+      const oldFilters = Object.assign({}, regionFilters);
+      const sx = mapW / W;
+      const sy = mapH / H;
+
+      // Draw boundaries
+      bCtx.fillStyle = '#fff';
+      bCtx.fillRect(0, 0, mapW, mapH);
+      bCtx.strokeStyle = '#000';
+      bCtx.lineWidth = MAP_LINE_W;
+      bCtx.lineCap = 'round';
+      bCtx.lineJoin = 'round';
+      for (const ln of lines) {
+        if (ln.length < 2) continue;
+        bCtx.beginPath();
+        bCtx.moveTo(ln[0].x * sx, ln[0].y * sy);
+        for (let i = 1; i < ln.length; i++) bCtx.lineTo(ln[i].x * sx, ln[i].y * sy);
+        bCtx.stroke();
+      }
+
+      const bd = bCtx.getImageData(0, 0, mapW, mapH).data;
+      regionMap.fill(0);
+
+      // Mark dark pixels as boundary (254)
+      for (let i = 0; i < mapW * mapH; i++) {
+        if (bd[i * 4] < 128) regionMap[i] = 254;
+      }
+
+      // Scanline flood fill
+      let nextId = 1;
+      regionFilters = {};
+      for (let y = 0; y < mapH; y++) {
+        for (let x = 0; x < mapW; x++) {
+          if (regionMap[y * mapW + x] !== 0) continue;
+          floodFill(x, y, nextId);
+          // Preserve old filter
+          const oldR = oldMap[y * mapW + x];
+          regionFilters[nextId] = oldFilters[oldR] || 0;
+          nextId++;
+          if (nextId >= 254) nextId = 253; // cap
+        }
+      }
+
+      // Assign boundary pixels to nearest region (multi-pass)
+      let pending = [];
+      for (let i = 0; i < mapW * mapH; i++) {
+        if (regionMap[i] === 254) pending.push(i);
+      }
+      const dirs = [1, -1, mapW, -mapW];
+      for (let pass = 0; pass < 8 && pending.length > 0; pass++) {
+        const next = [];
+        for (const idx of pending) {
+          let found = false;
+          for (const d of dirs) {
+            const ni = idx + d;
+            if (ni >= 0 && ni < mapW * mapH) {
+              const v = regionMap[ni];
+              if (v !== 0 && v !== 254) { regionMap[idx] = v; found = true; break; }
+            }
+          }
+          if (!found) next.push(idx);
+        }
+        pending = next;
+      }
+      // Remaining boundary pixels default to region 1
+      for (const idx of pending) regionMap[idx] = 1;
+      if (!regionFilters[1]) regionFilters[1] = 0;
+
+      updateFilterMapTexture();
+    }
+
+    function floodFill(startX, startY, id) {
+      const stack = [[startX, startY]];
+      while (stack.length > 0) {
+        let [sx, sy] = stack.pop();
+        let x = sx;
+        // Move left
+        while (x > 0 && regionMap[sy * mapW + x - 1] === 0) x--;
+        let spanA = false, spanB = false;
+        while (x < mapW && regionMap[sy * mapW + x] === 0) {
+          regionMap[sy * mapW + x] = id;
+          if (sy > 0) {
+            const a = regionMap[(sy - 1) * mapW + x];
+            if (!spanA && a === 0) { stack.push([x, sy - 1]); spanA = true; }
+            else if (a !== 0) spanA = false;
+          }
+          if (sy < mapH - 1) {
+            const b = regionMap[(sy + 1) * mapW + x];
+            if (!spanB && b === 0) { stack.push([x, sy + 1]); spanB = true; }
+            else if (b !== 0) spanB = false;
+          }
+          x++;
+        }
+      }
+    }
+
+    // ===================== OVERLAY DRAWING =====================
+    function drawOverlay() {
+      ctx.clearRect(0, 0, W, H);
+      if (lines.length === 0 && !currentLine) return;
+
+      // Dark outline pass
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = OVERLAY_LINE_W + 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      drawAllLines();
+
+      // White line pass with glow
+      ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+      ctx.lineWidth = OVERLAY_LINE_W;
+      ctx.shadowColor = 'rgba(255,255,255,0.4)';
+      ctx.shadowBlur = 6;
+      drawAllLines();
+      ctx.shadowBlur = 0;
+    }
+
+    function drawAllLines() {
+      for (const ln of lines) strokeLine(ln);
+      if (currentLine && currentLine.length > 1) strokeLine(currentLine);
+    }
+
+    function strokeLine(ln) {
+      if (ln.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(ln[0].x, ln[0].y);
+      for (let i = 1; i < ln.length; i++) ctx.lineTo(ln[i].x, ln[i].y);
+      ctx.stroke();
+    }
+
+    // ===================== POINTER EVENTS =====================
+    overlayEl.addEventListener('pointerdown', onDown);
+    overlayEl.addEventListener('pointermove', onMove);
+    overlayEl.addEventListener('pointerup', onUp);
+    overlayEl.addEventListener('pointercancel', onUp);
+    overlayEl.addEventListener('contextmenu', e => e.preventDefault());
+
+    function onDown(e) {
+      e.preventDefault();
+      const now = Date.now();
+      const x = e.clientX, y = e.clientY;
+
+      // Detect double-tap at pointerdown time, before any drag movement can occur.
+      // On Meta Quest, the ray controller fires small movement events between down/up
+      // of the second click, making onUp wrongly treat it as a drag instead of a tap.
+      // By checking here, we intercept the double-tap before isDrawing is ever set.
+      const tapDist = Math.sqrt((x - lastTapX) ** 2 + (y - lastTapY) ** 2);
+      if (now - lastTapT < DOUBLE_TAP_MS && tapDist < DOUBLE_TAP_PX) {
+        handleDoubleTap(x, y);
+        lastTapT = 0;
+        isDrawing = false;
+        currentLine = null;
+        return;
+      }
+
+      ptrStartX = x;
+      ptrStartY = y;
+      ptrStartT = now;
+      wasDrag = false;
+      currentLine = [{ x, y }];
+      isDrawing = true;
+    }
+
+    function onMove(e) {
+      if (!isDrawing || !currentLine) return;
+      e.preventDefault();
+      const x = e.clientX, y = e.clientY;
+      // Minimum distance between points
+      const last = currentLine[currentLine.length - 1];
+      if ((x - last.x) ** 2 + (y - last.y) ** 2 < 9) return;
+
+      if (!wasDrag) {
+        const d = Math.sqrt((x - ptrStartX) ** 2 + (y - ptrStartY) ** 2);
+        if (d > TAP_MAX_PX) wasDrag = true;
+      }
+      currentLine.push({ x, y });
+      drawOverlay();
+    }
+
+    function onUp(e) {
+      if (!isDrawing) return;
+      e.preventDefault();
+      isDrawing = false;
+      const now = Date.now();
+      const dt = now - ptrStartT;
+      const x = e.clientX, y = e.clientY;
+      const dist = Math.sqrt((x - ptrStartX) ** 2 + (y - ptrStartY) ** 2);
+
+      if (!wasDrag && dt < TAP_MAX_MS && dist < TAP_MAX_PX) {
+        // It's a tap — check double-tap
+        currentLine = null;
+        const tapDist = Math.sqrt((x - lastTapX) ** 2 + (y - lastTapY) ** 2);
+        if (now - lastTapT < DOUBLE_TAP_MS && tapDist < DOUBLE_TAP_PX) {
+          handleDoubleTap(x, y);
+          lastTapT = 0;
+        } else {
+          lastTapT = now;
+          lastTapX = x;
+          lastTapY = y;
+        }
+      } else if (wasDrag && currentLine && currentLine.length > 3) {
+        // Validate minimum length
+        const lx = currentLine[0].x - currentLine[currentLine.length - 1].x;
+        const ly = currentLine[0].y - currentLine[currentLine.length - 1].y;
+        const totalLen = Math.sqrt(lx * lx + ly * ly);
+        if (totalLen > MIN_DRAW_PX) {
+          lines.push(currentLine);
+          currentLine = null;
+          computeRegions();
+        } else {
+          currentLine = null;
+        }
+      } else {
+        currentLine = null;
+      }
+      drawOverlay();
+    }
+
+    function handleDoubleTap(x, y) {
+      const mx = Math.min(mapW - 1, Math.max(0, Math.floor(x / W * mapW)));
+      const my = Math.min(mapH - 1, Math.max(0, Math.floor(y / H * mapH)));
+      const rId = regionMap[my * mapW + mx];
+      if (!rId || rId === 254) return;
+
+      const cur = regionFilters[rId] || 0;
+      const next = (cur + 1) % NUM_FILTERS;
+      regionFilters[rId] = next;
+      updateFilterMapTexture();
+      showFilterLabel(x, y, FILTER_NAMES[next]);
+    }
+
+    // ===================== FILTER LABEL =====================
+    let labelTimer = 0;
+    function showFilterLabel(x, y, name) {
+      filterLabel.textContent = name;
+      filterLabel.style.left = x + 'px';
+      filterLabel.style.top = (y - 10) + 'px';
+      filterLabel.classList.add('visible');
+      clearTimeout(labelTimer);
+      labelTimer = setTimeout(() => filterLabel.classList.remove('visible'), 1200);
+    }
+
+    // ===================== BUTTONS =====================
+    document.getElementById('btnUndo').addEventListener('click', e => {
+      e.stopPropagation();
+      if (lines.length === 0) return;
+      lines.pop();
+      if (lines.length === 0) initRegions();
+      else computeRegions();
+      drawOverlay();
+    });
+
+    document.getElementById('btnClear').addEventListener('click', e => {
+      e.stopPropagation();
+      lines = [];
+      initRegions();
+      drawOverlay();
+    });
+
+    // ===================== ANIMATION LOOP =====================
+    function animate() {
+      requestAnimationFrame(animate);
+      if (video.readyState >= video.HAVE_CURRENT_DATA) {
+        videoTexture.needsUpdate = true;
+      }
+      renderer.render(scene, camera);
+    }
+
+    // ===================== RESIZE =====================
+    window.addEventListener('resize', () => {
+      W = window.innerWidth;
+      H = window.innerHeight;
+      mapW = Math.ceil(W / 2);
+      mapH = Math.ceil(H / 2);
+      renderer.setSize(W, H);
+      sizeOverlay();
+      boundaryCanvas.width = mapW;
+      boundaryCanvas.height = mapH;
+      fmapCanvas.width = mapW;
+      fmapCanvas.height = mapH;
+      regionMap = new Uint8Array(mapW * mapH);
+      if (lines.length > 0) computeRegions();
+      else initRegions();
+      drawOverlay();
+    });
+
+    // ===================== GALLERY =====================
+    const galleryView = document.getElementById('galleryView');
+    const btnBack = document.getElementById('btnBack');
+    const thumbs = document.querySelectorAll('.thumb');
+    let filterViewActive = false;
+
+    thumbs.forEach(thumb => {
+      thumb.addEventListener('click', () => {
+        if (filterViewActive) return;
+
+        // Zoom + fade the clicked thumbnail
+        thumb.style.transform = 'scale(2)';
+        thumb.style.opacity = '0';
+
+        setTimeout(() => {
+          // Load video
+          video.src = thumb.dataset.src;
+          video.currentTime = 0;
+          video.play().catch(() => {});
+
+          // Reset filter state
+          lines = [];
+          initRegions();
+          drawOverlay();
+
+          // Switch views
+          galleryView.style.opacity = '0';
+          setTimeout(() => {
+            galleryView.style.display = 'none';
+            container.style.display = 'block';
+            container.style.opacity = '0';
+            // Force reflow then fade in
+            container.offsetHeight;
+            container.style.opacity = '1';
+            btnBack.style.display = 'block';
+            filterViewActive = true;
+            try { window.parent.document.getElementById('btnBack').style.display = 'none'; } catch(e) {}
+
+            // Reset thumbnail for later
+            thumb.style.transform = '';
+            thumb.style.opacity = '';
+
+            // Show instructions briefly
+            instructions.style.opacity = '1';
+            setTimeout(() => { instructions.style.opacity = '0'; }, 4000);
+          }, 400);
+        }, 350);
+      });
+    });
+
+    btnBack.addEventListener('click', e => {
+      e.stopPropagation();
+      if (!filterViewActive) return;
+
+      // Fade out filter view
+      container.style.opacity = '0';
+      btnBack.style.display = 'none';
+
+      setTimeout(() => {
+        container.style.display = 'none';
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+
+        // Reset state
+        lines = [];
+        initRegions();
+        drawOverlay();
+        filterViewActive = false;
+        try { window.parent.document.getElementById('btnBack').style.display = 'flex'; } catch(e) {}
+
+        // Fade in gallery
+        galleryView.style.display = 'flex';
+        galleryView.offsetHeight;
+        galleryView.style.opacity = '1';
+      }, 400);
+    });
+
+    // ===================== INIT =====================
+    initRegions();
+    animate();
+  </script>
+</body>
+</html>
