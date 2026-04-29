@@ -1,0 +1,11 @@
+services:
+  dnsmasq:
+    image: jpillora/dnsmasq
+    restart: unless-stopped
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - ./dnsmasq.conf:/etc/dnsmasq.conf
+    cap_add:
+      - NET_ADMIN

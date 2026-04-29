@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appleton School — Presenter Guide</title>
+  <meta name="theme-color" content="#000000">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --black:       #000;
+      --white:       #fff;
+      --dim:         rgba(255,255,255,0.12);
+      --dim2:        rgba(255,255,255,0.06);
+      --dim3:        rgba(255,255,255,0.03);
+      --accent:      #c8a96e;
+      --accent-dim:  rgba(200,169,110,0.15);
+      --surface:     rgba(255,255,255,0.03);
+    }
+
+    *, *::before, *::after {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.03;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .bg-glow {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse 55% 40% at 20% 20%, rgba(200,169,110,0.04) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── LAYOUT ─────────────────────────────────── */
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 40px 100px;
+    }
+
+    /* ── HEADER ─────────────────────────────────── */
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 40px 0 28px;
+      border-bottom: 1px solid var(--dim2);
+      margin-bottom: 56px;
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+    }
+    .logo span { color: var(--accent); }
+
+    .present-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    .present-link:hover { color: var(--accent); }
+
+    /* ── HERO ───────────────────────────────────── */
+    .hero {
+      margin-bottom: 60px;
+    }
+
+    .hero-eyebrow {
+      font-size: 10px;
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+      opacity: 0.85;
+    }
+
+    .hero-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(46px, 7vw, 72px);
+      line-height: 1.02;
+      letter-spacing: -0.01em;
+      margin-bottom: 22px;
+    }
+    .hero-title em {
+      font-style: italic;
+      color: rgba(255,255,255,0.32);
+    }
+
+    .hero-sub {
+      font-size: 13px;
+      line-height: 1.78;
+      color: rgba(255,255,255,0.38);
+      max-width: 540px;
+    }
+
+    /* ── SECTION DIVIDER ────────────────────────── */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--dim) 30%, transparent 100%);
+      margin-bottom: 56px;
+      opacity: 0.5;
+    }
+
+    /* ── SECTION ────────────────────────────────── */
+    .section {
+      margin-bottom: 56px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--dim2);
+    }
+
+    .section-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 30px;
+      font-weight: 300;
+      color: var(--accent);
+      opacity: 0.5;
+      line-height: 1;
+    }
+
+    .section-title {
+      font-size: 11px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.65);
+    }
+
+    /* ── SLIDE CARD ─────────────────────────────── */
+    .slide-card {
+      background: var(--surface);
+      border: 1px solid var(--dim2);
+      border-radius: 4px;
+      padding: 26px 30px;
+      margin-bottom: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 2px; height: 100%;
+      background: var(--accent);
+      opacity: 0.45;
+    }
+
+    .slide-card-label {
+      font-size: 9px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.75;
+      margin-bottom: 8px;
+    }
+
+    .slide-card-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: 22px;
+      margin-bottom: 14px;
+    }
+
+    .slide-card-body {
+      font-size: 13px;
+      line-height: 1.72;
+      color: rgba(255,255,255,0.42);
+      margin-bottom: 16px;
+    }
+
+    .talking-points {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--dim2);
+    }
+
+    .talking-points li {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .talking-points li::before {
+      content: '→';
+      color: var(--accent);
+      opacity: 0.5;
+      flex-shrink: 0;
+    }
+
+    /* ── CHECKLIST ──────────────────────────────── */
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .checklist li {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      font-size: 13px;
+      line-height: 1.65;
+      color: rgba(255,255,255,0.48);
+      padding: 12px 16px;
+      border: 1px solid var(--dim2);
+      border-radius: 3px;
+    }
+
+    .check-box {
+      width: 17px; height: 17px;
+      border: 1px solid var(--dim);
+      border-radius: 3px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ── ALERT ──────────────────────────────────── */
+    .alert {
+      display: flex;
+      gap: 16px;
+      padding: 18px 22px;
+      background: rgba(200,169,110,0.05);
+      border: 1px solid rgba(200,169,110,0.18);
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+
+    .alert-icon {
+      font-size: 15px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .alert-text {
+      font-size: 12px;
+      line-height: 1.68;
+      color: rgba(255,255,255,0.45);
+    }
+
+    .alert-text strong {
+      display: block;
+      color: var(--accent);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    /* ── NAV TABLE ──────────────────────────────── */
+    .nav-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 6px;
+    }
+
+    .nav-table th {
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.25);
+      text-align: left;
+      padding: 0 0 12px;
+      border-bottom: 1px solid var(--dim2);
+    }
+
+    .nav-table td {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      padding: 13px 0;
+      border-bottom: 1px solid var(--dim2);
+      vertical-align: top;
+    }
+    .nav-table tr:last-child td { border-bottom: none; }
+
+    .nav-table td:first-child {
+      width: 160px;
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.6);
+      padding-right: 20px;
+    }
+
+    .key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 24px;
+      padding: 0 7px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--dim);
+      border-radius: 4px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.55);
+      font-family: 'Syne', sans-serif;
+      margin-right: 5px;
+    }
+
+    /* ── SLIDE FLOW TABLE ───────────────────────── */
+    .flow-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .flow-table th {
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.25);
+      text-align: left;
+      padding: 0 0 12px;
+      border-bottom: 1px solid var(--dim2);
+    }
+
+    .flow-table td {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      padding: 13px 0;
+      border-bottom: 1px solid var(--dim2);
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .flow-table tr:last-child td { border-bottom: none; }
+
+    .flow-table td:first-child {
+      width: 50px;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 300;
+      color: var(--accent);
+      opacity: 0.55;
+      padding-right: 20px;
+    }
+
+    .flow-table td:nth-child(2) {
+      width: 180px;
+      padding-right: 20px;
+    }
+
+    .flow-table td strong {
+      display: block;
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+
+    /* ── FOOTER ─────────────────────────────────── */
+    .guide-footer {
+      padding-top: 32px;
+      border-top: 1px solid var(--dim2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-note {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.14);
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 24px;
+      border: 1px solid var(--dim);
+      border-radius: 100px;
+      background: transparent;
+      color: rgba(255,255,255,0.35);
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      transition: border-color 0.3s, color 0.3s;
+    }
+    .btn-action:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── RESPONSIVE ─────────────────────────────── */
+    @media (max-width: 600px) {
+      .page { padding: 0 24px 80px; }
+      .site-header { padding-top: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<div class="page">
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="logo">BW<span>A</span> — Presenter Guide</div>
+    <a class="present-link" href="index.html">→ Open presentation</a>
+  </header>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">Appleton School — Internal Reference</div>
+    <div class="hero-title">Presenting<br><em>the environment</em></div>
+    <div class="hero-sub">
+      This guide is for the person running the presentation.
+      It covers setup, slide-by-slide talking points, navigation controls,
+      and what to do if something goes wrong. Keep it open on a separate device
+      during the presentation.
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+
+  <!-- ══ SECTION 1: BEFORE YOU START ══════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">Before You Start</div>
+    </div>
+
+    <p style="font-size:13px;line-height:1.75;color:rgba(255,255,255,0.4);margin-bottom:22px;">
+      Run through this checklist before the room fills in.
+    </p>
+
+    <ul class="checklist">
+      <li>
+        <div class="check-box"></div>
+        <span>Open <strong style="color:rgba(255,255,255,0.65)">index.html</strong> in a browser on the presentation computer. Use Chrome or Edge for best compatibility.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>Extend or mirror the display to the projector. Make sure the browser window is on the projected screen, set to <strong style="color:rgba(255,255,255,0.65)">full screen</strong> (press <strong style="color:rgba(255,255,255,0.65)">F11</strong> or use the browser menu).</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>The presentation starts on Slide 01 automatically. Do not refresh mid-session — this resets to Slide 01.</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>Keep this guide open on a separate device (phone, tablet, or a second monitor not visible to the audience).</span>
+      </li>
+      <li>
+        <div class="check-box"></div>
+        <span>Silence all notifications on the presentation computer before starting.</span>
+      </li>
+    </ul>
+  </div>
+
+
+  <!-- ══ SECTION 2: NAVIGATION ═════════════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">Navigation Controls</div>
+    </div>
+
+    <p style="font-size:13px;line-height:1.75;color:rgba(255,255,255,0.4);margin-bottom:22px;">
+      The presentation is controlled entirely from the keyboard or mouse. There is no auto-advance.
+    </p>
+
+    <table class="nav-table">
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Input</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Next slide</td>
+          <td><span class="key">→</span> <span class="key">↓</span> <span class="key">Space</span> or click the right half of the screen</td>
+        </tr>
+        <tr>
+          <td>Previous slide</td>
+          <td><span class="key">←</span> <span class="key">↑</span> or click the left half of the screen</td>
+        </tr>
+        <tr>
+          <td>Go to first slide</td>
+          <td>Refresh the page (<span class="key">F5</span>)</td>
+        </tr>
+        <tr>
+          <td>Full screen</td>
+          <td><span class="key">F11</span> (Windows) or browser full screen</td>
+        </tr>
+        <tr>
+          <td>Exit full screen</td>
+          <td><span class="key">F11</span> or <span class="key">Esc</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert" style="margin-top:18px;">
+      <div class="alert-icon">ℹ</div>
+      <div class="alert-text">
+        <strong>Tip</strong>
+        The current slide number is always shown in the top-right corner of the screen,
+        and progress dots are visible at the bottom. The audience cannot see these clearly
+        from a distance — they are for your reference.
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══ SECTION 3: SLIDE-BY-SLIDE GUIDE ══════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">Slide-by-Slide Reference</div>
+    </div>
+
+    <!-- Slide 01 -->
+    <div class="slide-card">
+      <div class="slide-card-label">Slide 01 — Welcome</div>
+      <div class="slide-card-title">Welcome to Appleton</div>
+      <div class="slide-card-body">
+        This is the opening slide. It sets the tone and introduces the school's digital art environment.
+        Hold here while the audience settles — it is designed to stand on its own visually.
+      </div>
+      <ul class="talking-points">
+        <li>Introduce yourself and the purpose of the presentation.</li>
+        <li>Mention that what you're about to show is a digital environment installed in the school — not a website or an app, but a physical space with interactive digital works.</li>
+        <li>The BWA platform is what powers these experiences.</li>
+      </ul>
+    </div>
+
+    <!-- Slide 02 -->
+    <div class="slide-card">
+      <div class="slide-card-label">Slide 02 — The Environment</div>
+      <div class="slide-card-title">Three Experiences, One Space</div>
+      <div class="slide-card-body">
+        This slide gives an overview of all three experiences. It is the map before the journey.
+        Use it to frame what the audience is about to see in detail.
+      </div>
+      <ul class="talking-points">
+        <li>There are three distinct interactive works, each exploring a different way of engaging with a moving image.</li>
+        <li>Students don't just watch — they touch, divide, reshape, and reconstruct.</li>
+        <li>The three cards on screen are the three experiences you will present next, one by one.</li>
+      </ul>
+    </div>
+
+    <!-- Slide 03 -->
+    <div class="slide-card">
+      <div class="slide-card-label">Slide 03 — Experience 01</div>
+      <div class="slide-card-title">Ripple & Trail</div>
+      <div class="slide-card-body">
+        First of the three experience detail slides. Focuses on the water-ripple interactive artwork.
+        The tagline "Motion as a brush" captures the core idea.
+      </div>
+      <ul class="talking-points">
+        <li>The video surface responds to touch or cursor movement in real time.</li>
+        <li>Each gesture leaves a trail that fades naturally — no two interactions are the same.</li>
+        <li>The physics are based on water wave propagation: rings expand outward, overlap, and decay.</li>
+        <li>Built on WebGL shaders — it runs entirely in the browser with no installation needed.</li>
+      </ul>
+    </div>
+
+    <!-- Slide 04 -->
+    <div class="slide-card">
+      <div class="slide-card-label">Slide 04 — Experience 02</div>
+      <div class="slide-card-title">Divide & Filters</div>
+      <div class="slide-card-body">
+        Second experience detail slide. The student becomes a compositor —
+        splitting the image and assigning different filters to each region.
+      </div>
+      <ul class="talking-points">
+        <li>Students drag across the screen to draw dividing lines. Each region is independent.</li>
+        <li>A double tap on any region cycles through 8 filters: Normal, Black & White, Pink, Sepia, Negative, Cold, Contrast, Vintage.</li>
+        <li>The result is a live artwork — made from the same video, but seen differently in every section.</li>
+        <li>There is no right answer. Every student's composition is unique.</li>
+      </ul>
+    </div>
+
+    <!-- Slide 05 -->
+    <div class="slide-card">
+      <div class="slide-card-label">Slide 05 — Experience 03</div>
+      <div class="slide-card-title">Puzzle</div>
+      <div class="slide-card-body">
+        Third experience detail slide. The most game-like of the three —
+        familiar enough to be immediately approachable, surprising in that
+        the pieces contain live video, not a static image.
+      </div>
+      <ul class="talking-points">
+        <li>The video is cut into pieces that students physically rearrange on screen.</li>
+        <li>Each piece is not a frozen screenshot — it plays the video live within its bounds.</li>
+        <li>A small preview plays in the corner so students always have a reference for where each piece belongs.</li>
+        <li>Four difficulty levels — from 8 pieces to 36 — so the experience scales for different ages and abilities.</li>
+      </ul>
+    </div>
+
+    <!-- Slide 06 -->
+    <div class="slide-card">
+      <div class="slide-card-label">Slide 06 — Closing</div>
+      <div class="slide-card-title">Art, Technology and Curiosity</div>
+      <div class="slide-card-body">
+        The closing slide brings the three experiences back together under a single message.
+        Hold here for questions or discussion.
+      </div>
+      <ul class="talking-points">
+        <li>These three works are not standalone apps — they are part of a unified environment installed in the school.</li>
+        <li>The intention is to give students a hands-on relationship with art and technology, not just a passive one.</li>
+        <li>Open the floor to questions here.</li>
+      </ul>
+    </div>
+  </div>
+
+
+  <!-- ══ SECTION 4: SLIDE OVERVIEW TABLE ══════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">Presentation Flow — Quick Reference</div>
+    </div>
+
+    <table class="flow-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Slide</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>01</td>
+          <td><strong>Welcome</strong>Intro + context setting</td>
+          <td>Let the audience settle. Introduce the school and the digital environment.</td>
+        </tr>
+        <tr>
+          <td>02</td>
+          <td><strong>The Environment</strong>Three experiences overview</td>
+          <td>Map of what's coming. Name and briefly describe all three before going deeper.</td>
+        </tr>
+        <tr>
+          <td>03</td>
+          <td><strong>Ripple & Trail</strong>Experience 01 detail</td>
+          <td>Explain how motion interacts with the artwork. Emphasise the real-time physics.</td>
+        </tr>
+        <tr>
+          <td>04</td>
+          <td><strong>Divide & Filters</strong>Experience 02 detail</td>
+          <td>Show how students become composers. Emphasise creative ownership.</td>
+        </tr>
+        <tr>
+          <td>05</td>
+          <td><strong>Puzzle</strong>Experience 03 detail</td>
+          <td>The most accessible experience — familiar format, surprising medium (live video).</td>
+        </tr>
+        <tr>
+          <td>06</td>
+          <td><strong>Closing</strong>Summary + Q&A</td>
+          <td>Bring it back together. Hold here for discussion.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- ══ SECTION 5: TROUBLESHOOTING ═══════════ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">Troubleshooting</div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-text">
+        <strong>Slides are not advancing</strong>
+        Make sure the browser window is in focus — click once on the presentation screen before using keyboard shortcuts. The window must be active to receive key input.
+      </div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-text">
+        <strong>Presentation appears zoomed in or cut off on the projector</strong>
+        Open browser zoom settings and set to 100% (<span style="color:rgba(255,255,255,0.55)">Ctrl + 0</span>). Then enter full screen mode with F11. The presentation is designed for a 16:9 aspect ratio.
+      </div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-text">
+        <strong>Fonts are not loading (text looks wrong)</strong>
+        The presentation loads fonts from Google Fonts and requires an internet connection. If the room has no internet, the fallback fonts (serif / sans-serif) will be used — the layout will still work correctly.
+      </div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-text">
+        <strong>The screen went to sleep mid-presentation</strong>
+        Before starting, go to your computer's display settings and disable sleep / screen timeout. On Windows: Settings → System → Power → Screen timeout → Never.
+      </div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠</div>
+      <div class="alert-text">
+        <strong>Need to restart from the beginning</strong>
+        Refresh the browser page (<span style="color:rgba(255,255,255,0.55)">F5</span>). The presentation always reloads on Slide 01.
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Footer -->
+  <div class="guide-footer">
+    <div class="footer-note">Appleton School — BWA Presenter Guide</div>
+    <a class="btn-action" href="index.html">→ Open presentation</a>
+  </div>
+
+</div><!-- .page -->
+</body>
+</html>

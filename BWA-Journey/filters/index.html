@@ -201,8 +201,9 @@
     <canvas id="overlay"></canvas>
     <div id="filterLabel"></div>
     <div class="toolbar">
-<button id="btnUndo">&#8617; Cancel</button>
+      <button id="btnUndo">&#8617; Cancel</button>
       <button id="btnClear">&#10005; Reset Filters</button>
+      <button id="btnShare">&#x1F4F7; Share</button>
     </div>
     <div id="instructions">Slide to divide &middot; Double-tap to change the filter</div>
   </div>
@@ -211,6 +212,58 @@
 
   <!-- Toast -->
   <div id="toast"></div>
+
+  <!-- Share Dialog -->
+  <div id="shareDialog" style="
+    display:none; position:fixed; inset:0; z-index:500;
+    background:rgba(0,0,0,0.82); backdrop-filter:blur(12px);
+    align-items:center; justify-content:center; padding:24px;
+  ">
+    <div style="
+      background:#0e0e0e; border:1px solid rgba(255,255,255,0.1);
+      border-radius:16px; padding:32px 28px; width:100%; max-width:420px;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    ">
+      <div style="font-size:26px; font-weight:600; color:#fff; margin-bottom:8px;">Share your creation</div>
+      <div style="font-size:15px; color:rgba(255,255,255,0.45); margin-bottom:28px;">
+        Your artwork will be posted on <strong style="color:rgba(255,255,255,0.7);">@blendingwitharts</strong>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:12px; letter-spacing:0.15em; text-transform:uppercase; color:#c8a96e; margin-bottom:8px;">Your name</label>
+        <input id="shareVisitorName" type="text" placeholder="e.g. Marie Dupont" autocomplete="off" style="
+          width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+          border-radius:8px; padding:14px 16px; color:#fff; font-size:16px; outline:none;
+        "/>
+      </div>
+
+      <div style="margin-bottom:28px;">
+        <label style="display:block; font-size:12px; letter-spacing:0.15em; text-transform:uppercase; color:#c8a96e; margin-bottom:8px;">Your Instagram (optional)</label>
+        <div style="display:flex; align-items:center; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:0 16px;">
+          <span style="color:#c8a96e; font-size:18px; margin-right:6px;">@</span>
+          <input id="shareInstagram" type="text" placeholder="your_username" autocomplete="off" autocapitalize="none" style="
+            flex:1; background:transparent; border:none; padding:14px 0;
+            color:#fff; font-size:16px; outline:none;
+          "/>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button onclick="closeShareDialog()" style="
+          flex:1; padding:16px; border:1px solid rgba(255,255,255,0.15); border-radius:8px;
+          background:transparent; color:rgba(255,255,255,0.4); font-size:15px;
+          letter-spacing:0.08em; text-transform:uppercase; cursor:pointer;
+          font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+        ">Cancel</button>
+        <button id="shareSubmitBtn" onclick="submitShare()" style="
+          flex:2; padding:16px; border:1px solid #c8a96e; border-radius:8px;
+          background:#c8a96e; color:#000; font-size:15px; font-weight:700;
+          letter-spacing:0.08em; text-transform:uppercase; cursor:pointer;
+          font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+        ">Post now</button>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.js"></script>
   <script>
@@ -753,6 +806,101 @@
     // ===================== INIT =====================
     initRegions();
     animate();
+
+    // ===================== SHARE =====================
+    const SERVER = `http://${location.hostname}:3001`;
+
+    document.getElementById('btnShare').addEventListener('click', e => {
+      e.stopPropagation();
+      openShareDialog();
+    });
+
+    function openShareDialog() {
+      const d = document.getElementById('shareDialog');
+      d.style.display = 'flex';
+      document.getElementById('shareVisitorName').value = '';
+      document.getElementById('shareInstagram').value = '';
+      const btn = document.getElementById('shareSubmitBtn');
+      btn.textContent = 'Post now';
+      btn.disabled = false;
+      btn.style.background = '#c8a96e';
+      btn.style.color = '#000';
+      btn.style.borderColor = '#c8a96e';
+    }
+
+    function closeShareDialog() {
+      document.getElementById('shareDialog').style.display = 'none';
+    }
+
+    async function submitShare() {
+      const name     = document.getElementById('shareVisitorName').value.trim();
+      const igHandle = document.getElementById('shareInstagram').value.trim().replace(/^@/, '');
+      const btn      = document.getElementById('shareSubmitBtn');
+
+      if (!name) {
+        document.getElementById('shareVisitorName').focus();
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Uploading…';
+
+      // Capture the Three.js canvas
+      const canvas = renderer.domElement;
+      const imageBase64 = canvas.toDataURL('image/jpeg', 0.9);
+
+      // Build caption
+      const now     = new Date();
+      const dateStr = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      const tag     = igHandle ? `\n@${igHandle}` : '';
+      const caption = `✨ ${name} just created this artwork during the BWA — Journey experience.\n📅 ${dateStr} at ${timeStr}${tag}\n\n#blendingwitharts #art #digitalart #experience`;
+
+      try {
+        // 1. Upload to Cloudinary
+        const uploadRes = await fetch(`${SERVER}/api/upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64 }),
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadData.url) throw new Error(uploadData.error || 'Upload failed');
+
+        btn.textContent = 'Publishing…';
+
+        // 2. Create Instagram container
+        const createRes = await fetch(`${SERVER}/api/instagram/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl: uploadData.url, caption }),
+        });
+        const createData = await createRes.json();
+        if (!createData.containerId) throw new Error(createData.error || 'Create failed');
+
+        // 3. Publish
+        const pubRes = await fetch(`${SERVER}/api/instagram/publish`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ containerId: createData.containerId }),
+        });
+        const pubData = await pubRes.json();
+        if (!pubData.success) throw new Error(pubData.error || 'Publish failed');
+
+        btn.textContent = '✓ Posted!';
+        btn.style.background = '#2e7d32';
+        btn.style.borderColor = '#2e7d32';
+        btn.style.color = '#fff';
+        setTimeout(closeShareDialog, 2000);
+
+      } catch (err) {
+        console.error('Share error:', err);
+        btn.disabled = false;
+        btn.textContent = 'Error — try again';
+        btn.style.background = 'transparent';
+        btn.style.borderColor = '#c62828';
+        btn.style.color = '#ef5350';
+      }
+    }
   </script>
 </body>
 </html>

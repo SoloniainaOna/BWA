@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appleton School — BWA Experiences</title>
+  <meta name="theme-color" content="#000000">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --black:       #000;
+      --white:       #fff;
+      --dim:         rgba(255,255,255,0.12);
+      --dim2:        rgba(255,255,255,0.06);
+      --dim3:        rgba(255,255,255,0.03);
+      --accent:      #c8a96e;
+      --accent-dim:  rgba(200,169,110,0.15);
+      --accent-mid:  rgba(200,169,110,0.4);
+    }
+
+    *, *::before, *::after {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      cursor: none;
+    }
+
+    *::-webkit-scrollbar { display: none; }
+
+    /* ── NOISE ─────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.028;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* ── BG GLOW (moves per slide) ─────────────── */
+    .bg-glow {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      transition: background 1.2s ease;
+    }
+
+    /* ── SLIDES CONTAINER ──────────────────────── */
+    #slides {
+      position: relative;
+      z-index: 2;
+      width: 100%; height: 100%;
+    }
+
+    /* ── INDIVIDUAL SLIDE ──────────────────────── */
+    .slide {
+      position: absolute; inset: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 56px 80px 56px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(40px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+    .slide.leaving {
+      opacity: 0;
+      transform: translateX(-40px);
+      pointer-events: none;
+    }
+
+    /* ── TOP BAR ───────────────────────────────── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      margin-bottom: 0;
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.9);
+    }
+    .logo span { color: var(--accent); }
+
+    .slide-counter {
+      font-size: 12px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.22);
+    }
+    .slide-counter b { color: var(--accent); }
+
+    /* ── DIVIDER LINE ──────────────────────────── */
+    .top-divider {
+      height: 1px;
+      background: linear-gradient(90deg, var(--accent-mid) 0%, var(--dim) 40%, transparent 100%);
+      margin: 22px 0 0;
+      flex-shrink: 0;
+    }
+
+    /* ── SLIDE CONTENT AREA ────────────────────── */
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* ── PROGRESS DOTS ─────────────────────────── */
+    .progress-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-shrink: 0;
+      padding-top: 20px;
+    }
+
+    .dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--dim);
+      transition: background 0.4s ease, transform 0.4s ease;
+    }
+    .dot.active {
+      background: var(--accent);
+      transform: scale(1.4);
+    }
+
+    /* ── NAV ARROWS (keyboard hint) ────────────── */
+    .nav-hint {
+      position: fixed;
+      bottom: 32px;
+      right: 72px;
+      display: flex;
+      gap: 10px;
+      z-index: 10;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    body:not(.cursor-moved) .nav-hint { opacity: 0.3; }
+    .nav-hint span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px; height: 34px;
+      border: 1px solid var(--dim);
+      border-radius: 4px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* ── GHOST NUMBER ──────────────────────────── */
+    .ghost-num {
+      position: absolute;
+      right: -20px;
+      bottom: -60px;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(200px, 30vw, 380px);
+      line-height: 1;
+      color: rgba(255,255,255,0.025);
+      pointer-events: none;
+      user-select: none;
+      letter-spacing: -0.04em;
+    }
+
+    /* ════════════════════════════════════════════
+       SLIDE 0 — WELCOME
+    ════════════════════════════════════════════ */
+    #slide-0 .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.42em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 28px;
+      opacity: 0.85;
+    }
+
+    #slide-0 .main-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(72px, 10vw, 130px);
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      margin-bottom: 36px;
+    }
+    #slide-0 .main-title em {
+      font-style: italic;
+      color: rgba(255,255,255,0.35);
+    }
+
+    #slide-0 .subtitle {
+      font-size: clamp(14px, 1.6vw, 18px);
+      line-height: 1.7;
+      color: rgba(255,255,255,0.38);
+      max-width: 560px;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+    }
+
+    #slide-0 .divider-line {
+      width: 60px;
+      height: 1px;
+      background: var(--accent);
+      opacity: 0.5;
+      margin: 32px 0;
+    }
+
+    #slide-0 .tag-row {
+      display: flex;
+      gap: 20px;
+    }
+    #slide-0 .tag {
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.2);
+      border: 1px solid var(--dim2);
+      padding: 7px 14px;
+      border-radius: 2px;
+    }
+
+    /* ════════════════════════════════════════════
+       SLIDE 1 — ENVIRONMENT OVERVIEW
+    ════════════════════════════════════════════ */
+    #slide-1 .section-label {
+      font-size: 10px;
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.7;
+      margin-bottom: 20px;
+    }
+
+    #slide-1 .section-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(48px, 6.5vw, 88px);
+      line-height: 1.0;
+      letter-spacing: -0.01em;
+      margin-bottom: 18px;
+    }
+    #slide-1 .section-title em {
+      font-style: italic;
+      color: rgba(255,255,255,0.3);
+    }
+
+    #slide-1 .section-desc {
+      font-size: clamp(13px, 1.4vw, 16px);
+      line-height: 1.75;
+      color: rgba(255,255,255,0.38);
+      max-width: 640px;
+      margin-bottom: 52px;
+    }
+
+    .exp-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 860px;
+    }
+
+    .exp-card {
+      border: 1px solid var(--dim2);
+      border-radius: 4px;
+      padding: 28px 28px 24px;
+      position: relative;
+      overflow: hidden;
+      background: rgba(255,255,255,0.018);
+      transition: border-color 0.3s;
+    }
+    .exp-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+      opacity: 0.5;
+    }
+
+    .exp-card-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 11px;
+      font-weight: 300;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.6;
+      margin-bottom: 12px;
+    }
+
+    .exp-card-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(20px, 2vw, 26px);
+      line-height: 1.15;
+      margin-bottom: 10px;
+    }
+
+    .exp-card-desc {
+      font-size: 11px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.35);
+    }
+
+    /* ════════════════════════════════════════════
+       SLIDES 2-4 — EXPERIENCE DETAIL
+    ════════════════════════════════════════════ */
+    .exp-detail-slide .exp-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(11px, 1.1vw, 13px);
+      letter-spacing: 0.38em;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.7;
+      margin-bottom: 22px;
+    }
+
+    .exp-detail-slide .exp-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(60px, 9vw, 116px);
+      line-height: 0.93;
+      letter-spacing: -0.02em;
+      margin-bottom: 14px;
+    }
+    .exp-detail-slide .exp-title em {
+      font-style: italic;
+      color: rgba(255,255,255,0.28);
+    }
+
+    .exp-detail-slide .exp-tagline {
+      font-size: clamp(13px, 1.3vw, 15px);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.22);
+      margin-bottom: 40px;
+    }
+
+    .exp-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      max-width: 860px;
+    }
+
+    .exp-desc {
+      font-size: clamp(13px, 1.35vw, 16px);
+      line-height: 1.78;
+      color: rgba(255,255,255,0.42);
+    }
+
+    .exp-details-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .exp-details-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      font-size: clamp(12px, 1.2vw, 14px);
+      line-height: 1.55;
+      color: rgba(255,255,255,0.38);
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--dim2);
+    }
+    .exp-details-list li:last-child { border-bottom: none; }
+
+    .exp-details-list li .bullet {
+      color: var(--accent);
+      opacity: 0.7;
+      flex-shrink: 0;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    /* ════════════════════════════════════════════
+       SLIDE 5 — CLOSING
+    ════════════════════════════════════════════ */
+    #slide-5 .closing-label {
+      font-size: 10px;
+      letter-spacing: 0.42em;
+      text-transform: uppercase;
+      color: var(--accent);
+      opacity: 0.7;
+      margin-bottom: 28px;
+    }
+
+    #slide-5 .closing-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(52px, 7.5vw, 100px);
+      line-height: 1.0;
+      letter-spacing: -0.015em;
+      margin-bottom: 36px;
+    }
+    #slide-5 .closing-title em {
+      font-style: italic;
+      color: rgba(255,255,255,0.28);
+    }
+
+    #slide-5 .closing-body {
+      font-size: clamp(13px, 1.4vw, 16px);
+      line-height: 1.78;
+      color: rgba(255,255,255,0.38);
+      max-width: 600px;
+      margin-bottom: 44px;
+    }
+
+    .closing-exp-row {
+      display: flex;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .closing-exp-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .closing-exp-item .num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 28px;
+      font-weight: 300;
+      color: var(--accent);
+      opacity: 0.5;
+      line-height: 1;
+    }
+
+    .closing-exp-item .name {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .closing-sep {
+      width: 1px;
+      height: 28px;
+      background: var(--dim2);
+    }
+
+    /* ── CURSOR ────────────────────────────────── */
+    #cursor {
+      position: fixed;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: transform 0.15s ease, width 0.3s ease, height 0.3s ease, opacity 0.3s;
+      mix-blend-mode: normal;
+    }
+    #cursor.click {
+      width: 36px; height: 36px;
+      background: transparent;
+      border: 1px solid var(--accent);
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div class="bg-glow" id="bgGlow"></div>
+
+<div id="slides">
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 0 — WELCOME
+  ══════════════════════════════════════════ -->
+  <section class="slide active" id="slide-0" data-glow="radial-gradient(ellipse 70% 60% at 15% 80%, rgba(200,169,110,0.07) 0%, transparent 65%), radial-gradient(ellipse 40% 40% at 85% 20%, rgba(255,255,255,0.02) 0%, transparent 70%)">
+    <div class="top-bar">
+      <div class="logo">BW<span>A</span></div>
+      <div class="slide-counter"><b>01</b> / 06</div>
+    </div>
+    <div class="top-divider"></div>
+
+    <div class="slide-body">
+      <div id="slide-0">
+        <div class="eyebrow">Appleton School — Digital Environment</div>
+        <div class="main-title">
+          Welcome<br>
+          <em>to Appleton</em>
+        </div>
+        <div class="divider-line"></div>
+        <div class="subtitle">
+          A new kind of learning environment — where students engage with art,<br>
+          technology, and creativity through immersive digital experiences.
+        </div>
+        <div class="tag-row" style="margin-top:32px;">
+          <div class="tag">3 Experiences</div>
+          <div class="tag">Interactive Art</div>
+          <div class="tag">BWA Platform</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-dots" id="dots-0"></div>
+    <div class="ghost-num">01</div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 1 — ENVIRONMENT OVERVIEW
+  ══════════════════════════════════════════ -->
+  <section class="slide" id="slide-1" data-glow="radial-gradient(ellipse 60% 50% at 80% 30%, rgba(200,169,110,0.06) 0%, transparent 65%), radial-gradient(ellipse 50% 60% at 10% 80%, rgba(255,255,255,0.015) 0%, transparent 70%)">
+    <div class="top-bar">
+      <div class="logo">BW<span>A</span></div>
+      <div class="slide-counter"><b>02</b> / 06</div>
+    </div>
+    <div class="top-divider"></div>
+
+    <div class="slide-body">
+      <div class="section-label">The Environment</div>
+      <div class="section-title">
+        Three experiences,<br><em>one space.</em>
+      </div>
+      <div class="section-desc">
+        Inside Appleton School, students discover a digital art environment built around
+        three interactive works. Each one invites a different kind of engagement —
+        from touch and movement to play and reconstruction.
+      </div>
+
+      <div class="exp-grid">
+        <div class="exp-card">
+          <div class="exp-card-num">Experience 01</div>
+          <div class="exp-card-title">Ripple<br>& Trail</div>
+          <div class="exp-card-desc">Movement shapes the artwork — touch creates waves, trails, and light across the surface of a moving image.</div>
+        </div>
+        <div class="exp-card">
+          <div class="exp-card-num">Experience 02</div>
+          <div class="exp-card-title">Divide<br>& Filters</div>
+          <div class="exp-card-desc">The image is split and transformed. Each segment takes on a different visual identity through eight artistic filters.</div>
+        </div>
+        <div class="exp-card">
+          <div class="exp-card-num">Experience 03</div>
+          <div class="exp-card-title">Puzzle</div>
+          <div class="exp-card-desc">A moving image is broken apart. Students reconstruct it piece by piece, from four levels of difficulty.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-dots" id="dots-1"></div>
+    <div class="ghost-num">02</div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 2 — EXPERIENCE 01: RIPPLE & TRAIL
+  ══════════════════════════════════════════ -->
+  <section class="slide exp-detail-slide" id="slide-2" data-glow="radial-gradient(ellipse 55% 55% at 5% 50%, rgba(200,169,110,0.07) 0%, transparent 65%), radial-gradient(ellipse 45% 40% at 90% 15%, rgba(200,169,110,0.03) 0%, transparent 70%)">
+    <div class="top-bar">
+      <div class="logo">BW<span>A</span></div>
+      <div class="slide-counter"><b>03</b> / 06</div>
+    </div>
+    <div class="top-divider"></div>
+
+    <div class="slide-body">
+      <div class="exp-num">Experience 01</div>
+      <div class="exp-title">Ripple<br><em>& Trail</em></div>
+      <div class="exp-tagline">Motion as a brush</div>
+
+      <div class="exp-cols">
+        <div class="exp-desc">
+          A live video becomes a reactive surface. As students move across it —
+          by touch or by cursor — their movement leaves flowing trails of light and
+          expanding ripple waves that propagate outward like water disturbed by a stone.
+          <br><br>
+          Every gesture is unique. Every path drawn disappears slowly, leaving only
+          the memory of motion in the artwork.
+        </div>
+        <ul class="exp-details-list">
+          <li><span class="bullet">—</span><span>Continuous trail with Gaussian falloff — smooth, organic edges</span></li>
+          <li><span class="bullet">—</span><span>Expanding concentric ring waves on each touch point</span></li>
+          <li><span class="bullet">—</span><span>Click-generated ripples with natural amplitude decay</span></li>
+          <li><span class="bullet">—</span><span>Real-time WebGL rendering via Three.js shader pipeline</span></li>
+          <li><span class="bullet">—</span><span>Works with both mouse and multi-touch input</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="progress-dots" id="dots-2"></div>
+    <div class="ghost-num">03</div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 3 — EXPERIENCE 02: DIVIDE & FILTERS
+  ══════════════════════════════════════════ -->
+  <section class="slide exp-detail-slide" id="slide-3" data-glow="radial-gradient(ellipse 60% 50% at 95% 60%, rgba(200,169,110,0.06) 0%, transparent 65%), radial-gradient(ellipse 40% 45% at 10% 15%, rgba(255,255,255,0.02) 0%, transparent 70%)">
+    <div class="top-bar">
+      <div class="logo">BW<span>A</span></div>
+      <div class="slide-counter"><b>04</b> / 06</div>
+    </div>
+    <div class="top-divider"></div>
+
+    <div class="slide-body">
+      <div class="exp-num">Experience 02</div>
+      <div class="exp-title">Divide<br><em>& Filters</em></div>
+      <div class="exp-tagline">One image, many identities</div>
+
+      <div class="exp-cols">
+        <div class="exp-desc">
+          Students drag across the screen to divide a living image into segments.
+          Each region becomes independent — a double tap cycles through eight
+          distinct visual filters, transforming its color, tone, and mood.
+          <br><br>
+          The result is a composition entirely their own: part editorial, part painting,
+          assembled live from a single moving source.
+        </div>
+        <ul class="exp-details-list">
+          <li><span class="bullet">—</span><span>Drag to divide the video into custom segments</span></li>
+          <li><span class="bullet">—</span><span>Double-tap any region to cycle through 8 filters</span></li>
+          <li><span class="bullet">—</span><span>Filters: Normal · B&W · Pink · Sepia · Negative · Cold · Contrast · Vintage</span></li>
+          <li><span class="bullet">—</span><span>Region isolation using flood-fill algorithm + WebGL shader rendering</span></li>
+          <li><span class="bullet">—</span><span>Choose from a selection of videos before starting</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="progress-dots" id="dots-3"></div>
+    <div class="ghost-num">04</div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 4 — EXPERIENCE 03: PUZZLE
+  ══════════════════════════════════════════ -->
+  <section class="slide exp-detail-slide" id="slide-4" data-glow="radial-gradient(ellipse 65% 55% at 50% 95%, rgba(200,169,110,0.06) 0%, transparent 65%), radial-gradient(ellipse 40% 35% at 85% 10%, rgba(255,255,255,0.02) 0%, transparent 70%)">
+    <div class="top-bar">
+      <div class="logo">BW<span>A</span></div>
+      <div class="slide-counter"><b>05</b> / 06</div>
+    </div>
+    <div class="top-divider"></div>
+
+    <div class="slide-body">
+      <div class="exp-num">Experience 03</div>
+      <div class="exp-title">Puzzle</div>
+      <div class="exp-tagline">Reconstruct the moving image</div>
+
+      <div class="exp-cols">
+        <div class="exp-desc">
+          The video is shattered into pieces. Students pick them up and
+          place them back — dragging, repositioning, assembling — until
+          the image plays whole again.
+          <br><br>
+          A live preview plays in the corner as a reference. Four levels of
+          difficulty scale the challenge, from 8 to 36 pieces, making the
+          experience accessible to every level of engagement.
+        </div>
+        <ul class="exp-details-list">
+          <li><span class="bullet">—</span><span>Drag-and-drop puzzle pieces drawn from a live video stream</span></li>
+          <li><span class="bullet">—</span><span>Snap-to-grid mechanic with 30% proximity threshold</span></li>
+          <li><span class="bullet">—</span><span>Easy: 8 pieces — Medium: 16 — Hard: 24 — Extreme: 36</span></li>
+          <li><span class="bullet">—</span><span>Live preview video in the corner for reference</span></li>
+          <li><span class="bullet">—</span><span>Choose from a selection of videos before starting</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="progress-dots" id="dots-4"></div>
+    <div class="ghost-num">05</div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 5 — CLOSING
+  ══════════════════════════════════════════ -->
+  <section class="slide" id="slide-5" data-glow="radial-gradient(ellipse 70% 60% at 50% 50%, rgba(200,169,110,0.055) 0%, transparent 65%)">
+    <div class="top-bar">
+      <div class="logo">BW<span>A</span></div>
+      <div class="slide-counter"><b>06</b> / 06</div>
+    </div>
+    <div class="top-divider"></div>
+
+    <div class="slide-body">
+      <div class="closing-label">Appleton School</div>
+      <div class="closing-title">
+        Art, technology<br>
+        <em>and curiosity.</em>
+      </div>
+      <div class="closing-body">
+        The BWA digital environment at Appleton School gives students a hands-on
+        relationship with contemporary art forms. Through movement, touch, and play,
+        they don't just observe — they participate. Each experience is a different
+        invitation to engage, create, and explore.
+      </div>
+
+      <div class="closing-exp-row">
+        <div class="closing-exp-item">
+          <div class="num">01</div>
+          <div class="name">Ripple & Trail</div>
+        </div>
+        <div class="closing-sep"></div>
+        <div class="closing-exp-item">
+          <div class="num">02</div>
+          <div class="name">Divide & Filters</div>
+        </div>
+        <div class="closing-sep"></div>
+        <div class="closing-exp-item">
+          <div class="num">03</div>
+          <div class="name">Puzzle</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-dots" id="dots-5"></div>
+    <div class="ghost-num">06</div>
+  </section>
+
+</div><!-- #slides -->
+
+<!-- Navigation hint -->
+<div class="nav-hint">
+  <span>←</span>
+  <span>→</span>
+</div>
+
+<script>
+  const TOTAL = 6;
+  let current = 0;
+  let isAnimating = false;
+
+  const slides    = document.querySelectorAll('.slide');
+  const bgGlow    = document.getElementById('bgGlow');
+  const cursor    = document.getElementById('cursor');
+
+  // ── BUILD DOTS ──────────────────────────────
+  for (let s = 0; s < TOTAL; s++) {
+    const container = document.getElementById(`dots-${s}`);
+    for (let i = 0; i < TOTAL; i++) {
+      const dot = document.createElement('div');
+      dot.className = 'dot' + (i === s ? ' active' : '');
+      container.appendChild(dot);
+    }
+  }
+
+  // ── NAVIGATE ────────────────────────────────
+  function goTo(index) {
+    if (isAnimating) return;
+    if (index < 0 || index >= TOTAL) return;
+    if (index === current) return;
+
+    isAnimating = true;
+
+    const prev = slides[current];
+    const next = slides[index];
+
+    prev.classList.add('leaving');
+    prev.classList.remove('active');
+
+    // Set direction for enter animation
+    next.style.transform = index > current ? 'translateX(40px)' : 'translateX(-40px)';
+    next.offsetHeight; // reflow
+
+    next.classList.add('active');
+    next.style.transform = '';
+
+    // Update glow
+    const glowVal = next.getAttribute('data-glow');
+    if (glowVal) bgGlow.style.background = glowVal;
+
+    current = index;
+
+    setTimeout(() => {
+      prev.classList.remove('leaving');
+      isAnimating = false;
+    }, 650);
+  }
+
+  function next() { goTo(current + 1); }
+  function prev() { goTo(current - 1); }
+
+  // ── SET INITIAL GLOW ────────────────────────
+  const initGlow = slides[0].getAttribute('data-glow');
+  if (initGlow) bgGlow.style.background = initGlow;
+
+  // ── KEYBOARD ────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); next();
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); prev();
+    }
+  });
+
+  // ── CLICK TO ADVANCE ────────────────────────
+  document.addEventListener('click', e => {
+    // Click right half → next, left half → prev
+    if (e.clientX > window.innerWidth / 2) next();
+    else prev();
+  });
+
+  // ── SWIPE ───────────────────────────────────
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) dx < 0 ? next() : prev();
+  }, { passive: true });
+
+  // ── CUSTOM CURSOR ───────────────────────────
+  document.addEventListener('mousemove', e => {
+    cursor.style.left = e.clientX + 'px';
+    cursor.style.top  = e.clientY + 'px';
+  });
+  document.addEventListener('mousedown', () => cursor.classList.add('click'));
+  document.addEventListener('mouseup',   () => cursor.classList.remove('click'));
+</script>
+</body>
+</html>

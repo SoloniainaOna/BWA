@@ -463,9 +463,9 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       text-align: center;
-      padding: 40px 36px;
+      padding: 40px 36px 60px;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       min-height: 0;
@@ -532,6 +532,34 @@
       width: 24px;
       height: 24px;
       flex-shrink: 0;
+    }
+
+    .btn-share {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 20px 44px;
+      border: 1px solid #1877F2;
+      border-radius: 100px;
+      background: rgba(24,119,242,0.12);
+      color: #5B9EF7;
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: background 0.3s, color 0.3s;
+      margin-bottom: 16px;
+    }
+    .btn-share:active {
+      background: rgba(24,119,242,0.28);
+      color: #fff;
+    }
+    .btn-share.loading {
+      opacity: 0.55;
+      pointer-events: none;
     }
 
     .btn-restart {
@@ -740,6 +768,139 @@
       from { opacity: 0; transform: translateY(18px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+    /* ─── SHARE DIALOG ───────────────────────────── */
+    .share-dialog-backdrop {
+      position: fixed; inset: 0;
+      z-index: 1000;
+      background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .share-dialog-backdrop.visible { display: flex; }
+
+    .share-dialog {
+      background: #0e0e0e;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 480px;
+    }
+    .share-dialog-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 36px;
+      font-weight: 300;
+      margin-bottom: 8px;
+    }
+    .share-dialog-sub {
+      font-size: 17px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+    .share-dialog-sub strong { color: rgba(255,255,255,0.65); }
+
+    .share-field { margin-bottom: 20px; }
+    .share-label {
+      display: block;
+      font-size: 14px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .share-input {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 16px 18px;
+      color: #fff;
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .share-input:focus { border-color: var(--accent); }
+
+    .share-input-prefix {
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 0 18px;
+      transition: border-color 0.2s;
+    }
+    .share-input-prefix:focus-within { border-color: var(--accent); }
+    .share-input-prefix span {
+      color: var(--accent);
+      font-size: 20px;
+      margin-right: 6px;
+    }
+    .share-input-ig {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 16px 0;
+      color: #fff;
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      outline: none;
+    }
+
+    .share-dialog-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+    }
+    .share-btn-cancel {
+      flex: 1;
+      padding: 18px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      background: transparent;
+      color: rgba(255,255,255,0.4);
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .share-btn-confirm {
+      flex: 2;
+      padding: 18px;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      background: var(--accent);
+      color: #000;
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .share-btn-confirm:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .share-btn-confirm.success {
+      background: #2e7d32;
+      border-color: #2e7d32;
+      color: #fff;
+    }
+    .share-btn-confirm.error {
+      background: transparent;
+      border-color: #c62828;
+      color: #ef5350;
+    }
+
     /* ─── LANDSCAPE MODE ─────────────────────────── */
     @media (orientation: landscape) {
       .ghost-number { display: none; }
@@ -1173,6 +1334,34 @@
 </div><!-- #app -->
 
 <!-- ══════════════════════════════════════════════
+     SHARE DIALOG
+══════════════════════════════════════════════════ -->
+<div id="shareDialog" class="share-dialog-backdrop">
+  <div class="share-dialog">
+    <div class="share-dialog-title">Share your creation</div>
+    <div class="share-dialog-sub">Your artwork will be posted on <strong>@blendingwitharts</strong></div>
+
+    <div class="share-field">
+      <label class="share-label">Your name</label>
+      <input id="shareVisitorName" class="share-input" type="text" placeholder="e.g. Marie Dupont" autocomplete="off" />
+    </div>
+
+    <div class="share-field">
+      <label class="share-label">Your Instagram (optional)</label>
+      <div class="share-input-prefix">
+        <span>@</span>
+        <input id="shareInstagram" class="share-input-ig" type="text" placeholder="your_username" autocomplete="off" autocapitalize="none" />
+      </div>
+    </div>
+
+    <div class="share-dialog-actions">
+      <button class="share-btn-cancel" onclick="closeShareDialog()">Cancel</button>
+      <button id="shareSubmitBtn" class="share-btn-confirm" onclick="submitShare()">Post now</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
      EXPERIENCE OVERLAY (iframe)
 ══════════════════════════════════════════════════ -->
 <div id="expOverlay">
@@ -1279,6 +1468,113 @@
 
   // Initial check
   updateFsHint();
+
+  // ── INSTAGRAM SHARE ────────────────────────────────────
+  const SERVER = `http://${location.hostname}:3001`;
+
+  // Capture the experience iframe canvas as base64
+  function captureExperience() {
+    try {
+      const frame = document.getElementById('expFrame');
+      const canvas = frame.contentDocument
+        ? frame.contentDocument.querySelector('canvas')
+        : null;
+      if (canvas) return canvas.toDataURL('image/jpeg', 0.9);
+    } catch (e) {}
+    return null;
+  }
+
+  function openShareDialog() {
+    document.getElementById('shareDialog').classList.add('visible');
+    document.getElementById('shareVisitorName').focus();
+    // Reset button state
+    const btn = document.getElementById('shareSubmitBtn');
+    btn.textContent = 'Post now';
+    btn.disabled = false;
+    btn.className = 'share-btn-confirm';
+  }
+
+  function closeShareDialog() {
+    document.getElementById('shareDialog').classList.remove('visible');
+  }
+
+  async function submitShare() {
+    const name      = document.getElementById('shareVisitorName').value.trim();
+    const igHandle  = document.getElementById('shareInstagram').value.trim().replace(/^@/, '');
+    const btn       = document.getElementById('shareSubmitBtn');
+
+    if (!name) {
+      document.getElementById('shareVisitorName').focus();
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+
+    // Build caption
+    const now     = new Date();
+    const dateStr = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const tag     = igHandle ? `\n@${igHandle}` : '';
+    const caption = `✨ ${name} vient de créer cette œuvre lors de l'expérience BWA — Journey.\n📅 Le ${dateStr} à ${timeStr}${tag}\n\n#blendingwitharts #art #digitalart #experience`;
+
+    try {
+      // 1. Get captured image (from last experience or fallback)
+      let imageBase64 = captureExperience();
+
+      if (!imageBase64) {
+        // Fallback: use a default promo image stored on the server
+        btn.textContent = 'Posting…';
+        const uploadRes = await fetch(`${SERVER}/api/upload-default`, { method: 'POST' });
+        const uploadData = await uploadRes.json();
+        if (!uploadData.url) throw new Error('Upload failed');
+        await postToInstagram(uploadData.url, caption, btn);
+        return;
+      }
+
+      // 2. Upload to Cloudinary via backend
+      const uploadRes = await fetch(`${SERVER}/api/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64 }),
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadData.url) throw new Error(uploadData.error || 'Upload failed');
+
+      btn.textContent = 'Publishing…';
+      await postToInstagram(uploadData.url, caption, btn);
+
+    } catch (err) {
+      console.error('Share error:', err);
+      btn.disabled = false;
+      btn.textContent = 'Error — try again';
+      btn.className = 'share-btn-confirm error';
+    }
+  }
+
+  async function postToInstagram(imageUrl, caption, btn) {
+    // Create container
+    const createRes = await fetch(`${SERVER}/api/instagram/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageUrl, caption }),
+    });
+    const createData = await createRes.json();
+    if (!createData.containerId) throw new Error(createData.error || 'Create failed');
+
+    // Publish
+    const pubRes = await fetch(`${SERVER}/api/instagram/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ containerId: createData.containerId }),
+    });
+    const pubData = await pubRes.json();
+    if (!pubData.success) throw new Error(pubData.error || 'Publish failed');
+
+    btn.textContent = '✓ Posted!';
+    btn.className = 'share-btn-confirm success';
+    setTimeout(closeShareDialog, 2000);
+  }
 </script>
 
 </body>
