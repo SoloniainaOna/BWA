@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express  = require('express');
 const cors     = require('cors');
+const http     = require('http');
+const { Server } = require('socket.io');
 const { v2: cloudinary } = require('cloudinary');
 
 cloudinary.config({
@@ -17,6 +19,11 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 
+// Serve the whole site (index.html, collab/, filters/, videos/, …) so the app
+// and the real-time server share one origin/port. Optional if you already use
+// XAMPP/nginx for the static files.
+app.use(express.static(__dirname));
+
 // ── 1. Upload image to Cloudinary, get public URL ──────────────────────────
 app.post('/api/upload', async (req, res) => {
   const { imageBase64 } = req.body;
@@ -27,8 +34,7 @@ app.post('/api/upload', async (req, res) => {
       folder: 'bwa-journey',
       format: 'jpg',
       transformation: [
-        { aspect_ratio: '1:1', crop: 'fill', gravity: 'center' },
-        { width: 1080, crop: 'scale' },
+        { aspect_ratio: '1.91', crop: 'pad', background: 'black', width: 1080 },
       ],
     });
     res.json({ url: result.secure_url });
@@ -89,5 +95,50 @@ app.post('/api/instagram/publish', async (req, res) => {
   }
 });
 
+// ── Draw Together: real-time collaboration (Socket.IO) ─────────────────────
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: '*' } });
+
+// In-memory room state. Cleared automatically when the last peer leaves.
+//   rooms[room] = { image: {t:'image',src} | null, log: [ ...ops ] }
+const rooms = {};
+
+io.on('connection', (socket) => {
+  let room = null;
+
+  socket.on('join', (r) => {
+    room = String(r || 'draw-together').slice(0, 64);
+    socket.join(room);
+    if (!rooms[room]) rooms[room] = { image: null, log: [] };
+
+    // Send current state so a late joiner catches up
+    socket.emit('snapshot', { image: rooms[room].image, log: rooms[room].log });
+
+    const count = io.sockets.adapter.rooms.get(room)?.size || 1;
+    io.to(room).emit('presence', count);
+  });
+
+  socket.on('op', (op) => {
+    if (!room || !rooms[room] || !op || typeof op.t !== 'string') return;
+    const state = rooms[room];
+
+    if (op.t === 'image')      { state.image = op; state.log = []; }   // new image resets the canvas
+    else if (op.t === 'reset') { state.log = []; }
+    else                       { state.log.push(op); }                 // line / tap / undo — replayable in order
+
+    // Keep the log bounded for a very long session
+    if (state.log.length > 5000) state.log.splice(0, state.log.length - 5000);
+
+    socket.to(room).emit('op', op);   // relay to everyone else in the room
+  });
+
+  socket.on('disconnect', () => {
+    if (!room) return;
+    const count = io.sockets.adapter.rooms.get(room)?.size || 0;
+    if (count === 0) delete rooms[room];        // free memory when the room empties
+    else io.to(room).emit('presence', count);
+  });
+});
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`BWA server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`BWA server running on port ${PORT}`));
