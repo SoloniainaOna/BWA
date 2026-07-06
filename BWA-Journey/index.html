@@ -584,7 +584,7 @@
     /* ─── EXP CARDS ──────────────────────────────── */
     .exp-cards {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(4, 1fr);
       gap: 1px;
       background: var(--dim2);
       border: 1px solid var(--dim2);
@@ -593,20 +593,18 @@
       margin-bottom: 0;
     }
 
-    .exp-card-wide { grid-column: 1 / -1; }
-
     .exp-card {
       position: relative;
       background: var(--black);
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      padding: 36px 32px 40px;
+      padding: 26px 22px 28px;
       overflow: hidden;
       cursor: pointer;
       touch-action: manipulation;
       transition: background 0.4s ease;
-      min-height: 260px;
+      aspect-ratio: 1 / 1;
       user-select: none;
     }
 
@@ -922,9 +920,8 @@
         flex-shrink: 0;
       }
       .exp-card {
-        min-height: 180px;
         justify-content: center;
-        padding: 24px 24px 28px;
+        padding: 20px;
       }
     }
   </style>
@@ -1127,7 +1124,7 @@
         </div>
 
         <!-- Card 3 — Draw Together (collaborative) -->
-        <div class="exp-card exp-card-wide" onclick="openExp('collab/index.html')">
+        <div class="exp-card" onclick="openExp('collab/index.html')">
           <div class="exp-card-num">03</div>
           <svg class="exp-card-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="6" y="10" width="36" height="28" rx="2" stroke="white" stroke-width="1" opacity="0.3"/>
@@ -1138,7 +1135,22 @@
           </svg>
           <div class="exp-card-label">Experience 03</div>
           <div class="exp-card-title">Draw<br>together</div>
-          <div class="exp-card-desc">Two tablets, one canvas. Draw and add filters — your partner sees every stroke in real&nbsp;time.</div>
+          <div class="exp-card-arrow">Explore</div>
+        </div>
+
+        <!-- Card 4 — Puzzle Together (collaborative) -->
+        <div class="exp-card" onclick="openExp('puzzle-collab/index.html')">
+          <div class="exp-card-num">04</div>
+          <svg class="exp-card-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="6" y="6" width="15" height="15" rx="1.5" stroke="white" stroke-width="1" opacity="0.5"/>
+            <rect x="27" y="6" width="15" height="15" rx="1.5" stroke="#c8a96e" stroke-width="1.2" opacity="0.9" fill="rgba(200,169,110,0.06)"/>
+            <rect x="6" y="27" width="15" height="15" rx="1.5" stroke="#c8a96e" stroke-width="1.2" opacity="0.9" fill="rgba(200,169,110,0.06)"/>
+            <rect x="27" y="27" width="15" height="15" rx="1.5" stroke="white" stroke-width="1" opacity="0.5"/>
+            <circle cx="13.5" cy="13.5" r="2.2" fill="white" opacity="0.5"/>
+            <circle cx="34.5" cy="34.5" r="2.2" fill="#c8a96e" opacity="0.8"/>
+          </svg>
+          <div class="exp-card-label">Experience 04</div>
+          <div class="exp-card-title">Puzzle<br>together</div>
           <div class="exp-card-arrow">Explore</div>
         </div>
 

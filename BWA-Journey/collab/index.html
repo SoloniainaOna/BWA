@@ -98,6 +98,53 @@
     }
     #collabDot.live { background: #34c759; box-shadow: 0 0 8px rgba(52,199,89,0.7); }
 
+    /* ========== LOBBY (create / join) ========== */
+    #lobby {
+      position: fixed; inset: 0;
+      z-index: 400;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 22px;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .lobby-title { color: #fff; font-size: 40px; font-weight: 600; letter-spacing: 0.02em; }
+    .lobby-sub {
+      color: rgba(255,255,255,0.5); font-size: 18px; text-align: center;
+      max-width: 80vw; line-height: 1.5; margin-bottom: 10px;
+    }
+    .lobby-panel { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; max-width: 360px; }
+    .lobby-row { display: flex; gap: 12px; width: 100%; }
+    .lobby-btn {
+      width: 100%; padding: 18px 24px; border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.05); color: #fff;
+      font-size: 19px; font-weight: 600; cursor: pointer;
+      transition: transform 0.15s, background 0.2s, border-color 0.2s;
+    }
+    .lobby-btn:active { transform: scale(0.97); }
+    .lobby-btn.primary { background: #c8a96e; border-color: #c8a96e; color: #000; }
+    .lobby-btn.ghost { background: transparent; color: rgba(255,255,255,0.55); }
+    .lobby-input {
+      width: 100%; text-align: center; letter-spacing: 0.4em;
+      font-size: 40px; font-weight: 700; text-transform: uppercase;
+      padding: 18px 10px; border-radius: 14px; color: #fff; outline: none;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18);
+    }
+    .lobby-input::placeholder { color: rgba(255,255,255,0.25); letter-spacing: 0.4em; }
+    .lobby-error { color: #ef5350; font-size: 15px; min-height: 20px; text-align: center; }
+    .lobby-codelabel { color: #c8a96e; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; }
+    .lobby-code {
+      font-size: 72px; font-weight: 800; letter-spacing: 0.14em; color: #fff;
+      background: rgba(200,169,110,0.08); border: 1px solid rgba(200,169,110,0.3);
+      border-radius: 16px; padding: 14px 28px;
+    }
+    .lobby-hint { color: rgba(255,255,255,0.5); font-size: 16px; text-align: center; max-width: 80vw; line-height: 1.5; }
+    .lobby-status { position: absolute; bottom: 28px; color: rgba(255,255,255,0.35); font-size: 14px; }
+
     /* ========== GALLERY VIEW ========== */
     #galleryView {
       position: fixed;
@@ -213,9 +260,39 @@
   </style>
 </head>
 <body>
-  <div id="collabBadge"><span id="collabDot"></span><span id="collabText">Connecting…</span></div>
+  <div id="collabBadge" style="display:none"><span id="collabDot"></span><span id="collabText"></span></div>
 
-  <div id="galleryView">
+  <!-- Lobby: choose Create or Join (like jklm.fun) -->
+  <div id="lobby">
+    <div class="lobby-title">Draw Together</div>
+    <div class="lobby-sub">Create a room and share the code with your partner, or join their room.</div>
+
+    <div id="lobbyChoice" class="lobby-panel">
+      <button class="lobby-btn primary" id="btnCreate">Create a room</button>
+      <button class="lobby-btn" id="btnShowJoin">Join a room</button>
+    </div>
+
+    <div id="lobbyJoin" class="lobby-panel" style="display:none">
+      <input id="joinCode" class="lobby-input" maxlength="8" placeholder="CODE"
+             autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" />
+      <div id="joinError" class="lobby-error"></div>
+      <div class="lobby-row">
+        <button class="lobby-btn ghost" id="btnJoinBack">Back</button>
+        <button class="lobby-btn primary" id="btnJoinGo">Join</button>
+      </div>
+    </div>
+
+    <div id="lobbyCreated" class="lobby-panel" style="display:none">
+      <div class="lobby-codelabel">Your room code</div>
+      <div id="createdCode" class="lobby-code">----</div>
+      <div class="lobby-hint">Read this code to your partner so they can join on their tablet.</div>
+      <button class="lobby-btn primary" id="btnCreatedGo">Continue &rarr;</button>
+    </div>
+
+    <div id="lobbyStatus" class="lobby-status">Connecting…</div>
+  </div>
+
+  <div id="galleryView" style="display:none;opacity:0">
     <div id="galleryTitle">Draw Together</div>
     <div id="galleryDesc" style="color:rgba(255,255,255,0.45); font-size:20px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; max-width:80vw; text-align:center; line-height:1.6;">
       Pick an image on <strong style="color:rgba(255,255,255,0.7);">either tablet</strong> — you'll both open the same one. <strong style="color:rgba(255,255,255,0.7);">Slide your finger</strong> to divide the image into zones and <strong style="color:rgba(255,255,255,0.7);">double-tap</strong> a zone to change its filter. Every stroke and filter appears on <strong style="color:rgba(255,255,255,0.7);">both screens live</strong>.
@@ -329,7 +406,6 @@
     // ── collaboration state ──
     let socket = null;
     let applyingRemote = false;               // guards against re-broadcasting remote ops
-    const ROOM = new URLSearchParams(location.search).get('room') || 'draw-together';
 
     // ===================== DOM =====================
     const container = document.getElementById('container');
@@ -787,7 +863,6 @@
 
     // Enter the shared canvas with a given video source (used by local pick AND remote pick)
     function enterFilterView(src) {
-      if (filterViewActive) return;
       video.src = src;
       video.currentTime = 0;
       video.play().catch(() => {});
@@ -824,16 +899,17 @@
         thumb.style.opacity = '0';
 
         setTimeout(() => {
-          enterFilterView(src);
-          sendOp({ t: 'image', src });         // ── tell the other tablet which image to open
           thumb.style.transform = '';
           thumb.style.opacity = '';
+          // Route through the server so BOTH tablets open the same image together.
+          if (socket && socket.connected) sendOp({ t: 'image', src });
+          else enterFilterView(src);           // solo fallback (no server)
         }, 350);
       });
     });
 
-    btnBack.addEventListener('click', e => {
-      e.stopPropagation();
+    // Return the shared canvas to the image picker (used by local Back AND remote 'back')
+    function goToGallery() {
       if (!filterViewActive) return;
 
       container.style.opacity = '0';
@@ -855,6 +931,14 @@
         galleryView.offsetHeight;
         galleryView.style.opacity = '1';
       }, 400);
+    }
+
+    btnBack.addEventListener('click', e => {
+      e.stopPropagation();
+      if (!filterViewActive) return;
+      // Authoritative: tell the server, which sends BOTH tablets back to selection.
+      if (socket && socket.connected) sendOp({ t: 'back' });
+      else goToGallery();                      // solo fallback
     });
 
     // ===================== INIT =====================
@@ -862,14 +946,41 @@
     animate();
 
     // ===================== COLLABORATION =====================
-    const collabDot  = document.getElementById('collabDot');
-    const collabText = document.getElementById('collabText');
+    const collabBadge  = document.getElementById('collabBadge');
+    const collabDot    = document.getElementById('collabDot');
+    const collabText   = document.getElementById('collabText');
+
+    // Lobby elements
+    const lobby        = document.getElementById('lobby');
+    const lobbyChoice  = document.getElementById('lobbyChoice');
+    const lobbyJoinP   = document.getElementById('lobbyJoin');
+    const lobbyCreated = document.getElementById('lobbyCreated');
+    const lobbyStatus  = document.getElementById('lobbyStatus');
+    const joinCodeEl   = document.getElementById('joinCode');
+    const joinErrorEl  = document.getElementById('joinError');
+    const createdCodeEl= document.getElementById('createdCode');
+
+    const URL_ROOM = new URLSearchParams(location.search).get('room');  // fixed-station shortcut
+    let currentCode = null;
+    let pendingAction = null;   // 'create' | 'join'
 
     function setPresence(count) {
-      const others = Math.max(0, count - 1);
       collabDot.classList.toggle('live', count >= 2);
-      if (count >= 2) collabText.textContent = 'Connected · drawing together';
-      else            collabText.textContent = 'Waiting for a partner…';
+      const who = count >= 2 ? `${count} people · drawing together` : 'Waiting for a partner…';
+      collabText.textContent = currentCode ? `Room ${currentCode} · ${who}` : who;
+    }
+
+    function showPanel(el) {
+      [lobbyChoice, lobbyJoinP, lobbyCreated].forEach(p => { p.style.display = 'none'; });
+      if (el) el.style.display = 'flex';
+    }
+
+    function revealGallery() {
+      lobby.style.display = 'none';
+      collabBadge.style.display = 'flex';
+      galleryView.style.display = 'flex';
+      galleryView.offsetHeight;             // reflow so the fade plays
+      galleryView.style.opacity = '1';
     }
 
     // Apply a single op received from (or replayed for) a peer
@@ -878,24 +989,19 @@
       try {
         switch (op.t) {
           case 'image':
-            enterFilterView(op.src);
+            enterFilterView(op.src);   // swaps in place if already on the canvas
+            break;
+          case 'back':
+            goToGallery();
             break;
           case 'line':
-            if (filterViewActive) {
-              lines.push(denormPts(op.pts));
-              computeRegions();
-              drawOverlay();
-            }
+            if (filterViewActive) { lines.push(denormPts(op.pts)); computeRegions(); drawOverlay(); }
             break;
           case 'tap':
             if (filterViewActive) handleDoubleTap(op.x * W, op.y * H);
             break;
-          case 'undo':
-            doUndo();
-            break;
-          case 'reset':
-            doReset();
-            break;
+          case 'undo': doUndo(); break;
+          case 'reset': doReset(); break;
         }
       } finally {
         applyingRemote = false;
@@ -903,17 +1009,43 @@
     }
 
     function connectCollab() {
-      if (typeof io === 'undefined') { collabText.textContent = 'Offline (solo)'; return; }
+      if (typeof io === 'undefined') {         // socket lib missing → solo fallback
+        revealGallery();
+        collabText.textContent = 'Offline (solo)';
+        return;
+      }
       socket = io(`http://${location.hostname}:3001`, { transports: ['websocket', 'polling'] });
 
-      socket.on('connect', () => socket.emit('join', ROOM));
-      socket.on('disconnect', () => { collabDot.classList.remove('live'); collabText.textContent = 'Reconnecting…'; });
+      socket.on('connect', () => {
+        lobbyStatus.textContent = '';
+        if (URL_ROOM) { pendingAction = 'join'; socket.emit('join', { mode: 'draw', code: URL_ROOM, createIfMissing: true }); }
+      });
+      socket.on('disconnect', () => {
+        collabDot.classList.remove('live');
+        if (currentCode) collabText.textContent = `Room ${currentCode} · reconnecting…`;
+        if (lobby.style.display !== 'none') lobbyStatus.textContent = 'Connection lost — reconnecting…';
+      });
+
+      socket.on('joined', ({ code }) => {
+        currentCode = code;
+        setPresence(1);
+        if (pendingAction === 'create') { createdCodeEl.textContent = code; showPanel(lobbyCreated); }
+        else revealGallery();               // join, or fixed-station shortcut
+        pendingAction = null;
+      });
+
+      socket.on('joinError', ({ reason, code }) => {
+        pendingAction = null;
+        joinErrorEl.textContent = (reason === 'not_found')
+          ? `No room “${code}”. Check the code and try again.`
+          : 'Please enter a room code.';
+      });
+
       socket.on('presence', (count) => setPresence(count));
 
       // Full state for a late joiner: the chosen image (if any) then the ordered op log
       socket.on('snapshot', ({ image, log }) => {
         if (image && image.src && !filterViewActive) enterFilterView(image.src);
-        // give enterFilterView time to switch in before replaying strokes
         const replay = () => (log || []).forEach(applyOp);
         if (image && image.src) setTimeout(replay, 550); else replay();
       });
@@ -921,6 +1053,34 @@
       // Live ops from the partner
       socket.on('op', (op) => applyOp(op));
     }
+
+    // ── Lobby interactions ──
+    document.getElementById('btnCreate').addEventListener('click', () => {
+      if (!socket || !socket.connected) { lobbyStatus.textContent = 'Connecting… try again in a moment.'; return; }
+      pendingAction = 'create';
+      socket.emit('create', { mode: 'draw' });
+    });
+    document.getElementById('btnShowJoin').addEventListener('click', () => {
+      joinErrorEl.textContent = ''; joinCodeEl.value = ''; showPanel(lobbyJoinP); joinCodeEl.focus();
+    });
+    document.getElementById('btnJoinBack').addEventListener('click', () => { joinErrorEl.textContent = ''; showPanel(lobbyChoice); });
+    document.getElementById('btnJoinGo').addEventListener('click', doJoin);
+    document.getElementById('btnCreatedGo').addEventListener('click', revealGallery);
+    joinCodeEl.addEventListener('input', () => {
+      joinCodeEl.value = joinCodeEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    });
+    joinCodeEl.addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); });
+
+    function doJoin() {
+      const code = joinCodeEl.value.trim().toUpperCase();
+      if (!code) { joinErrorEl.textContent = 'Please enter a room code.'; return; }
+      if (!socket || !socket.connected) { joinErrorEl.textContent = 'Connecting… try again in a moment.'; return; }
+      joinErrorEl.textContent = '';
+      pendingAction = 'join';
+      socket.emit('join', { mode: 'draw', code, createIfMissing: false });
+    }
+
+    showPanel(lobbyChoice);
     connectCollab();
 
     // ===================== SHARE =====================

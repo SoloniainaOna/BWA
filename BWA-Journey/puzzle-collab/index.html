@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Puzzle Together</title>
+    <style>
+        body {
+            margin: 0;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+            font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+            touch-action: none;
+        }
+
+        #gallery {
+            display: none;               /* shown after joining a room */
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            text-align: center;
+        }
+
+        #videos {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        video.thumbnail {
+            width: 22vw;
+            height: 20vh;
+            cursor: pointer;
+            border: 2px solid white;
+            border-radius: 8px;
+            object-fit: cover;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        video.thumbnail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+        }
+
+        #difficulty {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #difficulty button {
+            padding: 14px 24px;
+            border: 2px solid white;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 22px;
+        }
+
+        #difficulty button.active,
+        #difficulty button:hover {
+            background: white;
+            color: black;
+        }
+
+        #selectedDifficulty {
+            margin-top: 8px;
+            font-size: 22px;
+            color: #aaa;
+        }
+
+        #puzzleContainer {
+            position: relative;
+            display: none;
+            background: black;
+            border: 4px solid white;
+            box-sizing: content-box;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #mainVideo {
+            width: 100%;
+            height: 100%;
+            display: none;
+            border-radius: 8px;
+        }
+
+        .piece {
+            position: absolute;
+            cursor: grab;
+            border-radius: 2px;
+            user-select: none;
+            touch-action: none;
+            z-index: 1;
+        }
+
+        .snapped {
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* a piece currently held by the partner */
+        .heldByPeer {
+            pointer-events: none;
+            outline: 2px solid #c8a96e;
+            outline-offset: -2px;
+        }
+
+        #backButton {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10000;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid white;
+            border-radius: 100px;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            display: none;
+            transition: background 0.3s ease;
+        }
+
+        #backButton:hover { background: rgba(255, 255, 255, 0.25); }
+
+        #previewVideo {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 180px;
+            height: 100px;
+            border: 2px solid white;
+            border-radius: 6px;
+            z-index: 9999;
+            display: none;
+            object-fit: cover;
+            background: black;
+            opacity: 0.85;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            #previewVideo { width: 120px; height: 70px; }
+        }
+
+        /* ========== PRESENCE BADGE ========== */
+        #collabBadge {
+            position: fixed;
+            top: 16px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 9998;
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.85);
+            border-radius: 100px;
+            font-size: 14px; letter-spacing: 0.04em;
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            pointer-events: none; display: none;
+            align-items: center; gap: 8px;
+        }
+        #collabDot { width: 8px; height: 8px; border-radius: 50%; background: #f0a020; box-shadow: 0 0 8px rgba(240,160,32,0.7); }
+        #collabDot.live { background: #34c759; box-shadow: 0 0 8px rgba(52,199,89,0.7); }
+
+        /* ========== LOBBY (create / join) ========== */
+        #lobby {
+            position: fixed; inset: 0;
+            z-index: 10001;
+            background: #000;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            gap: 22px; padding: 24px;
+        }
+        .lobby-title { color: #fff; font-size: 40px; font-weight: 600; letter-spacing: 0.02em; }
+        .lobby-sub { color: rgba(255,255,255,0.5); font-size: 18px; text-align: center; max-width: 80vw; line-height: 1.5; margin-bottom: 10px; }
+        .lobby-panel { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; max-width: 360px; }
+        .lobby-row { display: flex; gap: 12px; width: 100%; }
+        .lobby-btn {
+            width: 100%; padding: 18px 24px; border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.05); color: #fff;
+            font-size: 19px; font-weight: 600; cursor: pointer;
+            transition: transform 0.15s, background 0.2s, border-color 0.2s;
+        }
+        .lobby-btn:active { transform: scale(0.97); }
+        .lobby-btn.primary { background: #c8a96e; border-color: #c8a96e; color: #000; }
+        .lobby-btn.ghost { background: transparent; color: rgba(255,255,255,0.55); }
+        .lobby-input {
+            width: 100%; text-align: center; letter-spacing: 0.4em;
+            font-size: 40px; font-weight: 700; text-transform: uppercase;
+            padding: 18px 10px; border-radius: 14px; color: #fff; outline: none;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18);
+        }
+        .lobby-input::placeholder { color: rgba(255,255,255,0.25); letter-spacing: 0.4em; }
+        .lobby-error { color: #ef5350; font-size: 15px; min-height: 20px; text-align: center; }
+        .lobby-codelabel { color: #c8a96e; font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; }
+        .lobby-code {
+            font-size: 72px; font-weight: 800; letter-spacing: 0.14em; color: #fff;
+            background: rgba(200,169,110,0.08); border: 1px solid rgba(200,169,110,0.3);
+            border-radius: 16px; padding: 14px 28px;
+        }
+        .lobby-hint { color: rgba(255,255,255,0.5); font-size: 16px; text-align: center; max-width: 80vw; line-height: 1.5; }
+        .lobby-status { position: absolute; bottom: 28px; color: rgba(255,255,255,0.35); font-size: 14px; }
+    </style>
+</head>
+
+<body>
+    <div id="collabBadge"><span id="collabDot"></span><span id="collabText"></span></div>
+
+    <!-- Lobby: choose Create or Join (like jklm.fun) -->
+    <div id="lobby">
+        <div class="lobby-title">Puzzle Together</div>
+        <div class="lobby-sub">Create a room and share the code with your partner, or join their room. You'll solve the same puzzle together.</div>
+
+        <div id="lobbyChoice" class="lobby-panel">
+            <button class="lobby-btn primary" id="btnCreate">Create a room</button>
+            <button class="lobby-btn" id="btnShowJoin">Join a room</button>
+        </div>
+
+        <div id="lobbyJoin" class="lobby-panel" style="display:none">
+            <input id="joinCode" class="lobby-input" maxlength="8" placeholder="CODE"
+                   autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" />
+            <div id="joinError" class="lobby-error"></div>
+            <div class="lobby-row">
+                <button class="lobby-btn ghost" id="btnJoinBack">Back</button>
+                <button class="lobby-btn primary" id="btnJoinGo">Join</button>
+            </div>
+        </div>
+
+        <div id="lobbyCreated" class="lobby-panel" style="display:none">
+            <div class="lobby-codelabel">Your room code</div>
+            <div id="createdCode" class="lobby-code">----</div>
+            <div class="lobby-hint">Read this code to your partner so they can join on their tablet.</div>
+            <button class="lobby-btn primary" id="btnCreatedGo">Continue &rarr;</button>
+        </div>
+
+        <div id="lobbyStatus" class="lobby-status">Connecting…</div>
+    </div>
+
+    <div id="gallery">
+        <p id="galleryInstruction" style="color:rgba(255,255,255,0.7); font-size:24px; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px;">Puzzle Together</p>
+        <p id="galleryDesc" style="color:rgba(255,255,255,0.45); font-size:20px; max-width:80vw; text-align:center; line-height:1.6; margin-bottom:16px;">
+          Pick a difficulty, then choose a video on <strong style="color:rgba(255,255,255,0.7);">either tablet</strong>. The image splits into pieces scattered the same way on both screens — <strong style="color:rgba(255,255,255,0.7);">drag pieces together</strong> to rebuild it. You'll each see the other's pieces move live.
+        </p>
+
+        <div id="difficulty">
+            <button class="active" data-rows="6" data-cols="6">Extreme (36)</button>
+            <button data-rows="6" data-cols="8">Impossible (48)</button>
+        </div>
+
+        <div id="selectedDifficulty">
+            Selected: <strong>Extreme (36)</strong>
+        </div>
+
+        <div id="videos">
+            <video class="thumbnail" src="/videos/2KH.mov" muted loop autoplay playsinline></video>
+            <video class="thumbnail" src="/videos/test6.mov" muted loop autoplay playsinline></video>
+            <video class="thumbnail" src="/videos/test5.mov" muted loop autoplay playsinline></video>
+            <video class="thumbnail" src="/videos/test4.mov" muted loop autoplay playsinline></video>
+        </div>
+    </div>
+
+    <div id="puzzleContainer">
+        <video id="mainVideo" autoplay loop muted playsinline></video>
+    </div>
+
+    <video id="previewVideo" autoplay loop muted playsinline></video>
+    <button id="backButton">&larr; Back</button>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        const gallery = document.getElementById("gallery");
+        const puzzleContainer = document.getElementById("puzzleContainer");
+        const mainVideo = document.getElementById("mainVideo");
+        const previewVideo = document.getElementById("previewVideo");
+        const backButton = document.getElementById("backButton");
+        const selectedDifficultyText = document.getElementById("selectedDifficulty");
+
+        let ROWS = 6, COLS = 6,
+            pieces = [],
+            placedCount = 0,
+            currentDifficulty = "Extreme (36)",
+            currentVideoSrc = "",
+            scaleRatio = 1,
+            animFrame,
+            puzzleActive = false;
+
+        // ── collaboration ──
+        let socket = null;
+        let applyingRemote = false;                 // guard against rebroadcasting remote ops
+        const remoteHeld = new Set();               // piece indexes currently held by the partner
+        function sendOp(op) { if (socket && socket.connected && !applyingRemote) socket.emit('op', op); }
+
+        function isVRDevice() {
+            const ratio = window.innerWidth / window.innerHeight;
+            return ratio > 2 ||
+                navigator.userAgent.toLowerCase().includes("oculus") ||
+                navigator.userAgent.toLowerCase().includes("quest");
+        }
+
+        // ── difficulty (Extreme 36 / Impossible 48) ──
+        document.querySelectorAll("#difficulty button").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll("#difficulty button").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                ROWS = parseInt(btn.dataset.rows);
+                COLS = parseInt(btn.dataset.cols);
+                currentDifficulty = btn.innerText;
+                selectedDifficultyText.innerHTML = `Selected: <strong>${currentDifficulty}</strong>`;
+            });
+        });
+
+        document.querySelectorAll(".thumbnail").forEach((thumb) => {
+            thumb.addEventListener("click", () => startShared(thumb.src));
+        });
+
+        backButton.addEventListener("click", () => {
+            if (socket && socket.connected) sendOp({ t: 'back' });   // authoritative → both tablets go back
+            else resetToGallery();
+        });
+
+        function resetToGallery() {
+            cancelAnimationFrame(animFrame);
+            puzzleActive = false;
+            remoteHeld.clear();
+            pieces.forEach(p => p.remove());
+            pieces = [];
+            puzzleContainer.style.display = "none";
+            mainVideo.pause();
+            mainVideo.style.display = "none";
+            previewVideo.pause();
+            previewVideo.style.display = "none";
+            backButton.style.display = "none";
+            try { window.parent.document.getElementById('btnBack').style.display = 'flex'; } catch (e) {}
+            puzzleContainer.style.background = "black";
+            puzzleContainer.style.border = "4px solid white";
+            gallery.style.display = "flex";
+        }
+
+        // ── normalized scatter, so both tablets start identically ──
+        function computeScatter(rows, cols) {
+            const positions = [];
+            const wN = 1 / cols, hN = 1 / rows;
+            for (let i = 0; i < rows * cols; i++) {
+                positions.push({
+                    x: +(Math.random() * (1 - wN)).toFixed(4),
+                    y: +(Math.random() * (1 - hN)).toFixed(4),
+                });
+            }
+            return positions;
+        }
+
+        // Local trigger: pick difficulty + image → tell the server, which starts it for everyone.
+        function startShared(src) {
+            const positions = computeScatter(ROWS, COLS);
+            if (socket && socket.connected) sendOp({ t: 'puzzle-start', src, rows: ROWS, cols: COLS, positions });
+            else buildPuzzle(src, ROWS, COLS, positions, null);      // solo fallback
+        }
+
+        // Build the board from shared data (used by puzzle-start echo AND late-join snapshot)
+        function buildPuzzle(src, rows, cols, positions, pieceStates) {
+            ROWS = rows; COLS = cols;
+            puzzleContainer.innerHTML = "";
+            puzzleContainer.appendChild(mainVideo);
+            puzzleContainer.style.background = "black";
+            puzzleContainer.style.border = "4px solid white";
+            mainVideo.style.display = "none";
+
+            gallery.style.display = "none";
+            puzzleContainer.style.display = "block";
+            backButton.style.display = "block";
+            try { window.parent.document.getElementById('btnBack').style.display = 'none'; } catch (e) {}
+
+            currentVideoSrc = src;
+            mainVideo.src = src;
+            mainVideo.currentTime = 0;
+            mainVideo.pause();
+
+            previewVideo.src = src;
+            previewVideo.style.display = "block";
+            previewVideo.play();
+
+            puzzleActive = true;
+            remoteHeld.clear();
+
+            mainVideo.onloadedmetadata = () => {
+                resizePuzzleContainer();
+                createPieces();
+                applyPositions(positions, pieceStates);
+                animatePieces();
+            };
+
+            window.addEventListener("resize", onResize);
+            window.addEventListener("orientationchange", onResize);
+        }
+
+        // Place every piece from normalized positions; snap the ones already solved.
+        function applyPositions(positions, pieceStates) {
+            const cw = puzzleContainer.clientWidth;
+            const ch = puzzleContainer.clientHeight;
+            placedCount = 0;
+            pieces.forEach((piece, i) => {
+                const solved = pieceStates && pieceStates[i] && pieceStates[i].snapped;
+                if (solved) {
+                    piece.style.left = piece.dataset.targetX + "px";
+                    piece.style.top = piece.dataset.targetY + "px";
+                    piece.classList.add("snapped");
+                    placedCount++;
+                } else if (positions && positions[i]) {
+                    piece.style.left = (positions[i].x * cw) + "px";
+                    piece.style.top = (positions[i].y * ch) + "px";
+                }
+            });
+            if (placedCount === ROWS * COLS) finishPuzzle();
+        }
+
+        function onResize() {
+            resizePuzzleContainer();
+            const vw = mainVideo.videoWidth * scaleRatio;
+            const vh = mainVideo.videoHeight * scaleRatio;
+            const pw = vw / COLS;
+            const ph = vh / ROWS;
+            pieces.forEach((piece, i) => {
+                const r = Math.floor(i / COLS);
+                const c = i % COLS;
+                const tx = c * pw;
+                const ty = r * ph;
+                piece.dataset.targetX = tx;
+                piece.dataset.targetY = ty;
+                piece.style.width = pw + "px";
+                piece.style.height = ph + "px";
+                if (piece.classList.contains("snapped")) {
+                    piece.style.left = tx + "px";
+                    piece.style.top = ty + "px";
+                }
+            });
+        }
+
+        function resizePuzzleContainer() {
+            if (!mainVideo.videoWidth) return;
+
+            const videoW = mainVideo.videoWidth;
+            const videoH = mainVideo.videoHeight;
+            const videoRatio = videoW / videoH;
+
+            let maxW, maxH;
+            if (isVRDevice()) {
+                const vv = window.visualViewport;
+                maxW = vv ? vv.width : window.innerWidth;
+                maxH = vv ? vv.height : window.innerHeight;
+                puzzleContainer.style.boxSizing = "border-box";
+            } else {
+                const margin = (window.innerWidth <= window.innerHeight) ? 0.90 : 0.85;
+                maxW = window.innerWidth * margin;
+                maxH = window.innerHeight * margin;
+                puzzleContainer.style.boxSizing = "content-box";
+            }
+
+            const containerRatio = maxW / maxH;
+            let finalW, finalH;
+            if (videoRatio > containerRatio) {
+                finalW = maxW;
+                finalH = maxW / videoRatio;
+            } else {
+                finalH = maxH;
+                finalW = maxH * videoRatio;
+            }
+
+            puzzleContainer.style.width = finalW + "px";
+            puzzleContainer.style.height = finalH + "px";
+            scaleRatio = finalW / videoW;
+        }
+
+        function createPieces() {
+            pieces = [];
+            placedCount = 0;
+            puzzleContainer.innerHTML = "";
+            puzzleContainer.appendChild(mainVideo);
+            mainVideo.style.display = "none";
+            previewVideo.style.display = "block";
+
+            const vw = mainVideo.videoWidth * scaleRatio;
+            const vh = mainVideo.videoHeight * scaleRatio;
+            const pw = vw / COLS;
+            const ph = vh / ROWS;
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const i = r * COLS + c;
+                    const canvas = document.createElement("canvas");
+                    canvas.width = mainVideo.videoWidth / COLS;
+                    canvas.height = mainVideo.videoHeight / ROWS;
+                    canvas.classList.add("piece");
+                    canvas.dataset.index = i;
+                    canvas.dataset.targetX = c * pw;
+                    canvas.dataset.targetY = r * ph;
+                    canvas.style.width = pw + "px";
+                    canvas.style.height = ph + "px";
+                    canvas.style.left = canvas.dataset.targetX + "px";
+                    canvas.style.top = canvas.dataset.targetY + "px";
+                    makeDraggable(canvas);
+                    puzzleContainer.appendChild(canvas);
+                    pieces.push(canvas);
+                }
+            }
+        }
+
+        function makeDraggable(piece) {
+            let offsetX = 0, offsetY = 0, lastMoveSent = 0;
+            const idx = () => parseInt(piece.dataset.index);
+
+            piece.addEventListener("pointerdown", (e) => {
+                if (piece.classList.contains("snapped")) return;
+                if (remoteHeld.has(idx())) return;            // partner is holding this piece
+                if (!e.isPrimary) return;
+                e.preventDefault();
+                piece.setPointerCapture(e.pointerId);
+                const pieceRect = piece.getBoundingClientRect();
+                offsetX = e.clientX - pieceRect.left;
+                offsetY = e.clientY - pieceRect.top;
+                piece.style.zIndex = 1000;
+                sendOp({ t: 'piece-grab', i: idx() });
+            });
+
+            piece.addEventListener("pointermove", (e) => {
+                if (!e.isPrimary) return;
+                if (!piece.hasPointerCapture(e.pointerId)) return;
+                e.preventDefault();
+
+                const containerRect = puzzleContainer.getBoundingClientRect();
+                const borderL = puzzleContainer.clientLeft;
+                const borderT = puzzleContainer.clientTop;
+
+                let newX = e.clientX - (containerRect.left + borderL) - offsetX;
+                let newY = e.clientY - (containerRect.top + borderT) - offsetY;
+
+                const maxX = puzzleContainer.clientWidth - piece.clientWidth;
+                const maxY = puzzleContainer.clientHeight - piece.clientHeight;
+                newX = Math.max(0, Math.min(maxX, newX));
+                newY = Math.max(0, Math.min(maxY, newY));
+
+                piece.style.left = newX + "px";
+                piece.style.top = newY + "px";
+
+                const now = performance.now();
+                if (now - lastMoveSent > 40) {              // throttle live position updates
+                    lastMoveSent = now;
+                    sendOp({ t: 'piece-move', i: idx(),
+                             x: +(newX / puzzleContainer.clientWidth).toFixed(4),
+                             y: +(newY / puzzleContainer.clientHeight).toFixed(4) });
+                }
+            });
+
+            const onRelease = (e) => {
+                if (!e.isPrimary) return;
+                if (!piece.hasPointerCapture(e.pointerId)) return;
+                piece.releasePointerCapture(e.pointerId);
+                piece.style.zIndex = 1;
+                const snapped = checkSnap(piece);
+                if (snapped) {
+                    sendOp({ t: 'piece-snap', i: idx() });
+                } else {
+                    // send final resting position + release the lock
+                    sendOp({ t: 'piece-move', i: idx(),
+                             x: +(parseFloat(piece.style.left) / puzzleContainer.clientWidth).toFixed(4),
+                             y: +(parseFloat(piece.style.top) / puzzleContainer.clientHeight).toFixed(4) });
+                    sendOp({ t: 'piece-release', i: idx() });
+                }
+            };
+
+            piece.addEventListener("pointerup", onRelease);
+            piece.addEventListener("pointercancel", onRelease);
+        }
+
+        // Returns true if the piece snapped into place.
+        function checkSnap(piece) {
+            const targetX = parseFloat(piece.dataset.targetX);
+            const targetY = parseFloat(piece.dataset.targetY);
+            const curX = parseFloat(piece.style.left);
+            const curY = parseFloat(piece.style.top);
+            const threshold = Math.min(60, Math.max(20, piece.clientWidth * 0.30));
+
+            if (Math.abs(curX - targetX) < threshold && Math.abs(curY - targetY) < threshold) {
+                piece.style.left = targetX + "px";
+                piece.style.top = targetY + "px";
+                piece.classList.add("snapped");
+                placedCount++;
+                if (placedCount === ROWS * COLS) finishPuzzle();
+                return true;
+            }
+            return false;
+        }
+
+        function animatePieces() {
+            function draw() {
+                const vw = mainVideo.videoWidth;
+                const vh = mainVideo.videoHeight;
+                const pw = vw / COLS;
+                const ph = vh / ROWS;
+                pieces.forEach((piece, i) => {
+                    const ctx = piece.getContext("2d");
+                    const r = Math.floor(i / COLS);
+                    const c = i % COLS;
+                    ctx.clearRect(0, 0, piece.width, piece.height);
+                    ctx.drawImage(mainVideo, c * pw, r * ph, pw, ph, 0, 0, piece.width, piece.height);
+                });
+                animFrame = requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        function finishPuzzle() {
+            pieces.forEach((p) => p.remove());
+            puzzleContainer.style.border = "none";
+            previewVideo.style.display = "none";
+            mainVideo.style.display = "block";
+            mainVideo.play();
+        }
+
+        // ===================== COLLABORATION =====================
+        const collabBadge  = document.getElementById('collabBadge');
+        const collabDot    = document.getElementById('collabDot');
+        const collabText   = document.getElementById('collabText');
+        const lobby        = document.getElementById('lobby');
+        const lobbyChoice  = document.getElementById('lobbyChoice');
+        const lobbyJoinP   = document.getElementById('lobbyJoin');
+        const lobbyCreated = document.getElementById('lobbyCreated');
+        const lobbyStatus  = document.getElementById('lobbyStatus');
+        const joinCodeEl   = document.getElementById('joinCode');
+        const joinErrorEl  = document.getElementById('joinError');
+        const createdCodeEl= document.getElementById('createdCode');
+
+        const URL_ROOM = new URLSearchParams(location.search).get('room');
+        let currentCode = null;
+        let pendingAction = null;   // 'create' | 'join'
+
+        function setPresence(count) {
+            collabDot.classList.toggle('live', count >= 2);
+            const who = count >= 2 ? `${count} people · solving together` : 'Waiting for a partner…';
+            collabText.textContent = currentCode ? `Room ${currentCode} · ${who}` : who;
+        }
+        function showPanel(el) {
+            [lobbyChoice, lobbyJoinP, lobbyCreated].forEach(p => { p.style.display = 'none'; });
+            if (el) el.style.display = 'flex';
+        }
+        function revealGallery() {
+            lobby.style.display = 'none';
+            collabBadge.style.display = 'flex';
+            gallery.style.display = 'flex';
+        }
+
+        function pieceAt(i) { return pieces[i]; }
+
+        // Apply one op received from (or replayed for) a peer
+        function applyOp(op) {
+            applyingRemote = true;
+            try {
+                switch (op.t) {
+                    case 'puzzle-start':
+                        buildPuzzle(op.src, op.rows, op.cols, op.positions, null);
+                        break;
+                    case 'back':
+                        resetToGallery();
+                        break;
+                    case 'piece-move': {
+                        const pc = pieceAt(op.i);
+                        if (pc && !pc.classList.contains('snapped')) {
+                            pc.style.left = (op.x * puzzleContainer.clientWidth) + "px";
+                            pc.style.top  = (op.y * puzzleContainer.clientHeight) + "px";
+                        }
+                        break;
+                    }
+                    case 'piece-snap': {
+                        const pc = pieceAt(op.i);
+                        if (pc && !pc.classList.contains('snapped')) {
+                            pc.style.left = pc.dataset.targetX + "px";
+                            pc.style.top  = pc.dataset.targetY + "px";
+                            pc.classList.add('snapped');
+                            pc.classList.remove('heldByPeer');
+                            remoteHeld.delete(op.i);
+                            placedCount++;
+                            if (placedCount === ROWS * COLS) finishPuzzle();
+                        }
+                        break;
+                    }
+                    case 'piece-grab': {
+                        remoteHeld.add(op.i);
+                        const pc = pieceAt(op.i);
+                        if (pc && !pc.classList.contains('snapped')) pc.classList.add('heldByPeer');
+                        break;
+                    }
+                    case 'piece-release': {
+                        remoteHeld.delete(op.i);
+                        const pc = pieceAt(op.i);
+                        if (pc) pc.classList.remove('heldByPeer');
+                        break;
+                    }
+                }
+            } finally {
+                applyingRemote = false;
+            }
+        }
+
+        function connectCollab() {
+            if (typeof io === 'undefined') { revealGallery(); collabText.textContent = 'Offline (solo)'; return; }
+            socket = io(`http://${location.hostname}:3001`, { transports: ['websocket', 'polling'] });
+
+            socket.on('connect', () => {
+                lobbyStatus.textContent = '';
+                if (URL_ROOM) { pendingAction = 'join'; socket.emit('join', { mode: 'puzzle', code: URL_ROOM, createIfMissing: true }); }
+            });
+            socket.on('disconnect', () => {
+                collabDot.classList.remove('live');
+                if (currentCode) collabText.textContent = `Room ${currentCode} · reconnecting…`;
+                if (lobby.style.display !== 'none') lobbyStatus.textContent = 'Connection lost — reconnecting…';
+            });
+
+            socket.on('joined', ({ code }) => {
+                currentCode = code;
+                setPresence(1);
+                if (pendingAction === 'create') { createdCodeEl.textContent = code; showPanel(lobbyCreated); }
+                else revealGallery();
+                pendingAction = null;
+            });
+
+            socket.on('joinError', ({ reason, code }) => {
+                pendingAction = null;
+                joinErrorEl.textContent = (reason === 'not_found')
+                    ? `No room “${code}”. Check the code and try again.`
+                    : 'Please enter a room code.';
+            });
+
+            socket.on('presence', (count) => setPresence(count));
+
+            // Late joiner: rebuild the board exactly as it stands
+            socket.on('snapshot', ({ puzzle }) => {
+                if (puzzle && puzzle.src) {
+                    buildPuzzle(puzzle.src, puzzle.rows, puzzle.cols, puzzle.pieces, puzzle.pieces);
+                }
+            });
+
+            socket.on('op', (op) => applyOp(op));
+        }
+
+        // ── Lobby interactions ──
+        document.getElementById('btnCreate').addEventListener('click', () => {
+            if (!socket || !socket.connected) { lobbyStatus.textContent = 'Connecting… try again in a moment.'; return; }
+            pendingAction = 'create';
+            socket.emit('create', { mode: 'puzzle' });
+        });
+        document.getElementById('btnShowJoin').addEventListener('click', () => {
+            joinErrorEl.textContent = ''; joinCodeEl.value = ''; showPanel(lobbyJoinP); joinCodeEl.focus();
+        });
+        document.getElementById('btnJoinBack').addEventListener('click', () => { joinErrorEl.textContent = ''; showPanel(lobbyChoice); });
+        document.getElementById('btnJoinGo').addEventListener('click', doJoin);
+        document.getElementById('btnCreatedGo').addEventListener('click', revealGallery);
+        joinCodeEl.addEventListener('input', () => {
+            joinCodeEl.value = joinCodeEl.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+        });
+        joinCodeEl.addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); });
+
+        function doJoin() {
+            const code = joinCodeEl.value.trim().toUpperCase();
+            if (!code) { joinErrorEl.textContent = 'Please enter a room code.'; return; }
+            if (!socket || !socket.connected) { joinErrorEl.textContent = 'Connecting… try again in a moment.'; return; }
+            joinErrorEl.textContent = '';
+            pendingAction = 'join';
+            socket.emit('join', { mode: 'puzzle', code, createIfMissing: false });
+        }
+
+        showPanel(lobbyChoice);
+        connectCollab();
+    </script>
+</body>
+
+</html>
